@@ -26,6 +26,7 @@ type
   private
     fConfig: TConfig;
     function loadConfig(configFileName: string):TConfig;
+    procedure saveConfig(configFileName: String; config_ :TConfig);
     property config: TConfig read fConfig write fConfig;
   public
 
@@ -57,6 +58,23 @@ begin
   if (fileExists(configFileName))
      then result:= TConfig.Create(openFileAsArray(configFileName, #$0A))
      else result:= TConfig.Create;
+end;
+
+procedure TForm1.saveConfig(configFileName: String; config_: TConfig);
+var
+  configArray:TStringArray;
+  fileContents:string;
+  index:integer;
+begin
+  fileContents:='';
+  configArray:=config.toStringArray;
+  for index:=0 to pred(length(configArray)) do
+    begin
+    fileContents:=fileContents+configArray[index];
+    if (index < pred(length(configArray))) then
+    fileContents:=fileContents+ #$0A;
+    end;
+  writeStream(configFileName, fileContents);
 end;
 
 end.

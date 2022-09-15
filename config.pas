@@ -20,6 +20,7 @@ type
     public
     constructor create;
     constructor create(lines: TStringArray);
+    function toStringArray: TStringArray;
   end;
 
 implementation
@@ -74,6 +75,20 @@ begin
         else addRepo(parts[0],parts[1]);
       end;
   end;
+end;
+
+function TConfig.toStringArray: TStringArray;
+var
+  configLength,index:integer;
+begin
+  result:= TStringArray.create;
+  configLength:=fRepositories.Count + 1;
+  setLength(Result, configLength);
+  result[0]:='code_directory='+fCodeDirectory;
+  for index:= 0 to pred(fRepositories.Count) do
+    begin
+      result[index+1]:=fRepositories.Keys[index]+'='+fRepositories.Data[index];
+    end;
 end;
 
 end.
