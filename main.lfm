@@ -39,6 +39,9 @@ object Form1: TForm1
       Height = 22
       Top = 32
       Width = 240
+      Font.Color = clBlack
+      OnChange = eCodeDirectoryChange
+      ParentFont = False
       TabOrder = 2
     end
     object lCodeDirectory: TLabel

@@ -14,18 +14,26 @@ type
     private
       fCodeDirectory:String;
       fRepositories: specialize TFPGMap<string,string>;
-      procedure addRepo(repoName,repoPath:string);
+      procedure setCodeDirectory(codeDirectory:string);
       function getRepoPath(repoName:string):string;
       procedure deleteRepo(repoName:string);
     public
     constructor create;
     constructor create(lines: TStringArray);
     function toStringArray: TStringArray;
+    procedure addRepo(repoName,repoPath:string);
+    procedure clearRepos;
+    property codeDirectory:string read fCodeDirectory write setCodeDirectory;
   end;
 
 implementation
 
 { TConfig }
+
+procedure TConfig.setCodeDirectory(codeDirectory: string);
+begin
+
+end;
 
 procedure TConfig.addRepo(repoName, repoPath: string);
 var
@@ -50,6 +58,11 @@ var
 begin
   fRepositories.Find(repoName,repoIndex);
   if (repoIndex > -1) then fRepositories.Delete(repoIndex);
+end;
+
+procedure TConfig.clearRepos;
+begin
+  fRepositories.Clear;
 end;
 
 constructor TConfig.create;
