@@ -27,6 +27,8 @@ type
   private
     fConfig: TConfig;
     function loadConfig(configFileName: string):TConfig;
+    procedure repositoriesChanged(sender:TObject);
+    procedure codeDirectoryChanged(sender:TObject);
     procedure saveConfig(configFileName: String; config_ :TConfig);
     procedure rescanRepos(codeDir: string);
     property config: TConfig read fConfig write fConfig;
@@ -51,6 +53,7 @@ begin
      then
        begin
        config.clearRepos;
+       config.codeDirectory:=eCodeDirectory.Text;
        rescanRepos(eCodeDirectory.Text);
        end;
      eCodeDirectory.Font.Color:=clBlack;
@@ -72,8 +75,18 @@ end;
 function TForm1.loadConfig(configFileName: string): TConfig;
 begin
   if (fileExists(configFileName))
-     then result:= TConfig.Create(openFileAsArray(configFileName, #$0A))
-     else result:= TConfig.Create;
+     then result:= TConfig.Create(@repositoriesChanged,@codeDirectoryChanged,openFileAsArray(configFileName, #$0A))
+     else result:= TConfig.Create(@repositoriesChanged,@codeDirectoryChanged);
+end;
+
+procedure TForm1.repositoriesChanged(sender: TObject);
+begin
+  //take action if repos changed
+end;
+
+procedure TForm1.codeDirectoryChanged(sender: TObject);
+begin
+  //take action if code directory changed
 end;
 
 procedure TForm1.saveConfig(configFileName: String; config_: TConfig);
@@ -100,18 +113,12 @@ index:integer;
 directoryName,repoName:string;
 repoNameParts:TStringArray;
 begin
-  //starting with the specified codedirectory
-  //we look in all subdirectories and check if it has
-  //a .git directory
-  //if it does, we don't go any deeper into that directory
-  //sounds kind of recursive doesn't it?
   chdir(codeDir);
   if directoryExists('.git') then
     begin
       //add to the list of repos and don't go any deeper
       repoNameParts:=codeDir.Split('/');
       repoName:= repoNameParts[length(repoNameParts)-1];
-
       config.addRepo(repoName,codeDir);
     end else
     begin
@@ -120,7 +127,6 @@ begin
       begin
       directoryName:= directoryList[index];
       rescanRepos(codeDir+'/'+directoryName);
-
       end;
     end;
 

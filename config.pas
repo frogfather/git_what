@@ -14,15 +14,20 @@ type
     private
       fCodeDirectory:String;
       fRepositories: specialize TFPGMap<string,string>;
-      procedure setCodeDirectory(codeDirectory:string);
+      fRepositoriesChanged:TNotifyEvent;
+      fCodeDirectoryChanged:TNotifyEvent;
+      fRescanning:boolean;
+      procedure setCodeDirectory(codeDirectory_:string);
       function getRepoPath(repoName:string):string;
       procedure deleteRepo(repoName:string);
+      property rescanning: boolean read fRescanning write fRescanning;
     public
-    constructor create;
-    constructor create(lines: TStringArray);
+    constructor create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent);
+    constructor create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent;lines: TStringArray);
     function toStringArray: TStringArray;
     procedure addRepo(repoName,repoPath:string);
     procedure clearRepos;
+    procedure rescanRepos;
     property codeDirectory:string read fCodeDirectory write setCodeDirectory;
   end;
 
@@ -30,9 +35,41 @@ implementation
 
 { TConfig }
 
-procedure TConfig.setCodeDirectory(codeDirectory: string);
+constructor TConfig.create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent);
 begin
+  //create an empty object
+  fCodeDirectory:='';
+  fRepositories:= specialize TFPGMap<string,string>.Create;
+  fRepositories.Sorted:=true;
+  fRepositoriesChanged:=onRepositoriesChanged;
+  fCodeDirectoryChanged:=onCodeDirectoryChanged;
+end;
 
+constructor TConfig.create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent; lines: TStringArray);
+var
+  index:integer;
+  parts:TStringArray;
+begin
+  fRepositories:= specialize TFPGMap<string,string>.Create;
+  fRepositories.Sorted:=true;
+  fRepositoriesChanged:=onRepositoriesChanged;
+  fCodeDirectoryChanged:=onCodeDirectoryChanged;
+  for index:= 0 to pred(length(lines)) do
+  begin
+    //split each line on =
+    parts:=lines[index].Split('=');
+    if (length(parts)=2) then
+      begin
+        if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
+        else addRepo(parts[0],parts[1]);
+      end;
+  end;
+end;
+
+procedure TConfig.setCodeDirectory(codeDirectory_: string);
+begin
+if (directoryExists(codeDirectory_)) then fCodeDirectory:=codeDirectory_;
+//else raise an error?
 end;
 
 procedure TConfig.addRepo(repoName, repoPath: string);
@@ -40,7 +77,11 @@ var
   repoIndex:integer;
 begin
   fRepositories.Find(repoName,repoIndex);
-  if (repoIndex = -1) then fRepositories.Add(repoName, repoPath);
+  if (repoIndex = -1) then
+    begin
+      fRepositories.Add(repoName, repoPath);
+      fRepositoriesChanged(self);
+    end;
 end;
 
 function TConfig.getRepoPath(repoName: string): string;
@@ -57,37 +98,22 @@ var
   repoIndex:integer;
 begin
   fRepositories.Find(repoName,repoIndex);
-  if (repoIndex > -1) then fRepositories.Delete(repoIndex);
+  if (repoIndex > -1) then
+    begin
+      fRepositories.Delete(repoIndex);
+      fRepositoriesChanged(self);
+    end;
 end;
 
 procedure TConfig.clearRepos;
 begin
   fRepositories.Clear;
+  fRepositoriesChanged(self);
 end;
 
-constructor TConfig.create;
+procedure TConfig.rescanRepos;
 begin
-  //create an empty object
-  fCodeDirectory:='';
-  fRepositories:= specialize TFPGMap<string,string>.Create;
-end;
 
-constructor TConfig.create(lines: TStringArray);
-var
-  index:integer;
-  parts:TStringArray;
-begin
-  fRepositories:= specialize TFPGMap<string,string>.Create;
-  for index:= 0 to pred(length(lines)) do
-  begin
-    //split each line on =
-    parts:=lines[index].Split('=');
-    if (length(parts)=2) then
-      begin
-        if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
-        else addRepo(parts[0],parts[1]);
-      end;
-  end;
 end;
 
 function TConfig.toStringArray: TStringArray;
