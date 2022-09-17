@@ -30,7 +30,6 @@ type
     procedure repositoriesChanged(sender:TObject);
     procedure codeDirectoryChanged(sender:TObject);
     procedure saveConfig(configFileName: String; config_ :TConfig);
-    procedure rescanRepos(codeDir: string);
     property config: TConfig read fConfig write fConfig;
   public
 
@@ -47,16 +46,7 @@ implementation
 
 procedure TForm1.bCodeDirectoryClick(Sender: TObject);
 begin
-  If selectDirectoryDialog1.Execute then eCodeDirectory.Text:= selectDirectoryDialog1.FileName;
-  if ((eCodeDirectory.Text <> config.codeDirectory)
-     and (messageDlg('','Code directory has changed. Rescan?',mtConfirmation,[mbYes, mbNo],'') = mrYes))
-     then
-       begin
-       config.clearRepos;
-       config.codeDirectory:=eCodeDirectory.Text;
-       rescanRepos(eCodeDirectory.Text);
-       end;
-     eCodeDirectory.Font.Color:=clBlack;
+  If selectDirectoryDialog1.Execute then config.codeDirectory:= selectDirectoryDialog1.FileName;
 end;
 
 procedure TForm1.eCodeDirectoryChange(Sender: TObject);
@@ -80,13 +70,27 @@ begin
 end;
 
 procedure TForm1.repositoriesChanged(sender: TObject);
+var
+  currentRepoName:String;
+  currentRepoNameIndex:integer;
 begin
-  //take action if repos changed
+  if (cbCurrentRepo.ItemIndex > -1)
+     then currentRepoName:=cbCurrentRepo.Items[cbCurrentRepo.ItemIndex]
+     else currentRepoName:='';
+  cbCurrentRepo.Clear;
+  cbCurrentRepo.Items:=config.repoNames;
+  if (currentRepoName <> '') then
+    begin
+      currentRepoNameIndex:= cbCurrentRepo.Items.IndexOf(currentRepoName);
+      cbCurrentRepo.ItemIndex:=currentRepoNameIndex;
+    end;
 end;
 
 procedure TForm1.codeDirectoryChanged(sender: TObject);
 begin
-  //take action if code directory changed
+  if (messageDlg('','Code directory has changed. Rescan?',mtConfirmation,[mbYes, mbNo],'') = mrYes)
+     then config.rescanRepos;
+     eCodeDirectory.Font.Color:=clBlack;
 end;
 
 procedure TForm1.saveConfig(configFileName: String; config_: TConfig);
@@ -104,32 +108,6 @@ begin
     fileContents:=fileContents+ #$0A;
     end;
   writeStream(configFileName, fileContents);
-end;
-
-procedure TForm1.rescanRepos(codeDir: string);
-var
-directoryList:TStringlist;
-index:integer;
-directoryName,repoName:string;
-repoNameParts:TStringArray;
-begin
-  chdir(codeDir);
-  if directoryExists('.git') then
-    begin
-      //add to the list of repos and don't go any deeper
-      repoNameParts:=codeDir.Split('/');
-      repoName:= repoNameParts[length(repoNameParts)-1];
-      config.addRepo(repoName,codeDir);
-    end else
-    begin
-    directoryList:=findDirectories(codeDir+'/');
-    for index:= 0 to pred(directoryList.Count) do
-      begin
-      directoryName:= directoryList[index];
-      rescanRepos(codeDir+'/'+directoryName);
-      end;
-    end;
-
 end;
 
 end.

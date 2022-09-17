@@ -5,11 +5,11 @@ unit config;
 interface
 
 uses
-  Classes, SysUtils,fgl;
+  Classes, SysUtils,fgl,fileUtil;
 type
   
   { TConfig }
-
+  //TODO repositories should be an array of repository objects (TBA)
   TConfig = class(TInterfacedObject)
     private
       fCodeDirectory:String;
@@ -17,10 +17,14 @@ type
       fRepositoriesChanged:TNotifyEvent;
       fCodeDirectoryChanged:TNotifyEvent;
       fRescanning:boolean;
+      fExclusions:TStringlist;
       procedure setCodeDirectory(codeDirectory_:string);
       function getRepoPath(repoName:string):string;
+      function getRepoNames:TStringlist;
       procedure deleteRepo(repoName:string);
+      procedure doRescanRepos(codeDir:String);
       property rescanning: boolean read fRescanning write fRescanning;
+      property exclusions: TStringlist read fExclusions;
     public
     constructor create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent);
     constructor create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent;lines: TStringArray);
@@ -29,6 +33,7 @@ type
     procedure clearRepos;
     procedure rescanRepos;
     property codeDirectory:string read fCodeDirectory write setCodeDirectory;
+    property repoNames: TStringlist read getRepoNames;
   end;
 
 implementation
@@ -43,6 +48,9 @@ begin
   fRepositories.Sorted:=true;
   fRepositoriesChanged:=onRepositoriesChanged;
   fCodeDirectoryChanged:=onCodeDirectoryChanged;
+  fExclusions:=TStringlist.Create;
+  fExclusions.Add('node_modules');
+  fExclusions.Add('lib');
 end;
 
 constructor TConfig.create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent; lines: TStringArray);
@@ -68,7 +76,11 @@ end;
 
 procedure TConfig.setCodeDirectory(codeDirectory_: string);
 begin
-if (directoryExists(codeDirectory_)) then fCodeDirectory:=codeDirectory_;
+if (directoryExists(codeDirectory_)) then
+  begin
+    fCodeDirectory:=codeDirectory_;
+    fCodeDirectoryChanged(self);
+  end;
 //else raise an error?
 end;
 
@@ -76,11 +88,12 @@ procedure TConfig.addRepo(repoName, repoPath: string);
 var
   repoIndex:integer;
 begin
-  fRepositories.Find(repoName,repoIndex);
+  repoIndex:=   fRepositories.IndexOf(repoName);
   if (repoIndex = -1) then
     begin
       fRepositories.Add(repoName, repoPath);
-      fRepositoriesChanged(self);
+      //we don't want to fire the event handler while rescanning
+      if not rescanning then fRepositoriesChanged(self);
     end;
 end;
 
@@ -89,8 +102,18 @@ var
   repoIndex:integer;
 begin
   fRepositories.Find(repoName,repoIndex);
-  if (repoIndex > -1) then result:= fRepositories.Data[repoIndex]
+  if (repoIndex > 0) then result:= fRepositories.Data[repoIndex]
   else result:='';
+end;
+
+function TConfig.getRepoNames: TStringlist;
+var
+  index:integer;
+begin
+  result:=TStringlist.Create;
+  for index:= 0 to pred(fRepositories.Count) do
+      result.add(fRepositories.Keys[index]);
+
 end;
 
 procedure TConfig.deleteRepo(repoName: string);
@@ -98,22 +121,51 @@ var
   repoIndex:integer;
 begin
   fRepositories.Find(repoName,repoIndex);
-  if (repoIndex > -1) then
+  if (repoIndex > 0) then
     begin
       fRepositories.Delete(repoIndex);
-      fRepositoriesChanged(self);
+      //we don't want to fire the event handler while rescanning
+      if not rescanning then fRepositoriesChanged(self);
+    end;
+end;
+
+procedure TConfig.rescanRepos;
+begin
+  rescanning:= true;
+  doRescanRepos(codeDirectory);
+  rescanning:=false;
+  fRepositoriesChanged(self);
+end;
+
+procedure TConfig.doRescanRepos(codeDir: String);
+var
+directoryList:TStringlist;
+index:integer;
+directoryName,repoName:string;
+repoNameParts:TStringArray;
+begin
+  chdir(codeDir);
+  repoNameParts:=codeDir.Split('/');
+  repoName:= repoNameParts[length(repoNameParts)-1];
+  if directoryExists('.git') then
+    begin
+      //add to the list of repos and don't go any deeper
+      addRepo(repoName,codeDir);
+    end else if exclusions.IndexOf(repoName) = -1 then
+    begin
+    directoryList:=findAllDirectories(codeDir+'/',false);
+    for index:= 0 to pred(directoryList.Count) do
+      begin
+      directoryName:= directoryList[index];
+      doRescanRepos(directoryName);
+      end;
     end;
 end;
 
 procedure TConfig.clearRepos;
 begin
   fRepositories.Clear;
-  fRepositoriesChanged(self);
-end;
-
-procedure TConfig.rescanRepos;
-begin
-
+  if not rescanning then fRepositoriesChanged(self);
 end;
 
 function TConfig.toStringArray: TStringArray;
