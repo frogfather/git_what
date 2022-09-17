@@ -5,7 +5,7 @@ unit main;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,FileUtilities, config;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,FileUtilities,Fileutil, config,process;
 
 type
 
@@ -16,8 +16,12 @@ type
     Button1: TButton;
     cbCurrentRepo: TComboBox;
     eCodeDirectory: TEdit;
+    Edit1: TEdit;
     lCurrentRepo: TLabel;
     lCodeDirectory: TLabel;
+    ListBox1: TListBox;
+    Memo1: TMemo;
+    Process1: TProcess;
     pTree: TPanel;
     pDirectory: TPanel;
     SelectDirectoryDialog1: TSelectDirectoryDialog;
@@ -54,7 +58,14 @@ end;
 
 procedure TForm1.Button1Click(Sender: TObject);
 begin
-  saveConfig(getUsrDir('cloudsoft')+'/.gitwhat.cfg',config);
+  chdir('/Users/cloudsoft/Code/housekeeper-app');
+  if not directoryExists('.git') then exit;
+  Process1.Executable := '/bin/sh';
+  Process1.Parameters.Add('-c');
+  Process1.Parameters.Add('git branch');
+  Process1.Options := Process1.Options + [poWaitOnExit, poUsePipes, poStderrToOutPut];
+  Process1.Execute;
+  Memo1.Lines.LoadFromStream(Process1.Output);
 end;
 
 procedure TForm1.eCodeDirectoryChange(Sender: TObject);
