@@ -16,11 +16,9 @@ type
     Button1: TButton;
     cbCurrentRepo: TComboBox;
     eCodeDirectory: TEdit;
-    Edit1: TEdit;
     lCurrentRepo: TLabel;
     lCodeDirectory: TLabel;
     ListBox1: TListBox;
-    Memo1: TMemo;
     Process1: TProcess;
     pTree: TPanel;
     pDirectory: TPanel;
@@ -30,6 +28,7 @@ type
     procedure Button1Click(Sender: TObject);
     procedure eCodeDirectoryChange(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    function RunCommand(directory,command:string):TStringList;
   private
     fConfig: TConfig;
     function loadConfig(configFileName: string):TConfig;
@@ -58,14 +57,7 @@ end;
 
 procedure TForm1.Button1Click(Sender: TObject);
 begin
-  chdir('/Users/cloudsoft/Code/housekeeper-app');
-  if not directoryExists('.git') then exit;
-  Process1.Executable := '/bin/sh';
-  Process1.Parameters.Add('-c');
-  Process1.Parameters.Add('git branch');
-  Process1.Options := Process1.Options + [poWaitOnExit, poUsePipes, poStderrToOutPut];
-  Process1.Execute;
-  Memo1.Lines.LoadFromStream(Process1.Output);
+  listbox1.Items:=runCommand('/Users/cloudsoft/Code/housekeeper-app','git branch');
 end;
 
 procedure TForm1.eCodeDirectoryChange(Sender: TObject);
@@ -81,6 +73,19 @@ begin
   config:= loadConfig(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
   loadNames('');
   eCodeDirectory.Text:=config.codeDirectory;
+end;
+
+function TForm1.RunCommand(directory, command: string): TStringList;
+begin
+  chdir(directory);
+  if not directoryExists('.git') then exit;
+  Process1.Executable := '/bin/sh';
+  Process1.Parameters.Add('-c');
+  Process1.Parameters.Add(command);
+  Process1.Options := Process1.Options + [poWaitOnExit, poUsePipes, poStderrToOutPut];
+  Process1.Execute;
+  result:=TStringlist.Create;
+  result.LoadFromStream(Process1.Output);
 end;
 
 function TForm1.loadConfig(configFileName: string): TConfig;
