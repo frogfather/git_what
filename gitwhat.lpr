@@ -10,7 +10,8 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, main, fileUtilities, xml_doc_handler, config, config_xml_doc_handler;
+  Forms, main, fileUtilities, xml_doc_handler, config, config_xml_doc_handler,
+  repo;
 
 {$R *.res}
 

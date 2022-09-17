@@ -13,6 +13,7 @@ type
 
   TForm1 = class(TForm)
     bCodeDirectory: TButton;
+    Button1: TButton;
     cbCurrentRepo: TComboBox;
     eCodeDirectory: TEdit;
     lCurrentRepo: TLabel;
@@ -22,6 +23,7 @@ type
     SelectDirectoryDialog1: TSelectDirectoryDialog;
     Splitter1: TSplitter;
     procedure bCodeDirectoryClick(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
     procedure eCodeDirectoryChange(Sender: TObject);
     procedure FormShow(Sender: TObject);
   private
@@ -30,6 +32,7 @@ type
     procedure repositoriesChanged(sender:TObject);
     procedure codeDirectoryChanged(sender:TObject);
     procedure saveConfig(configFileName: String; config_ :TConfig);
+    procedure loadNames(currentRepoName:string);
     property config: TConfig read fConfig write fConfig;
   public
 
@@ -49,6 +52,11 @@ begin
   If selectDirectoryDialog1.Execute then config.codeDirectory:= selectDirectoryDialog1.FileName;
 end;
 
+procedure TForm1.Button1Click(Sender: TObject);
+begin
+  saveConfig(getUsrDir('cloudsoft')+'/.gitwhat.cfg',config);
+end;
+
 procedure TForm1.eCodeDirectoryChange(Sender: TObject);
 begin
   if (eCodeDirectory.Text <> config.codeDirectory)
@@ -60,6 +68,8 @@ procedure TForm1.FormShow(Sender: TObject);
 begin
   //Read a config file containing the code directory and all git repositories
   config:= loadConfig(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
+  loadNames('');
+  eCodeDirectory.Text:=config.codeDirectory;
 end;
 
 function TForm1.loadConfig(configFileName: string): TConfig;
@@ -72,18 +82,11 @@ end;
 procedure TForm1.repositoriesChanged(sender: TObject);
 var
   currentRepoName:String;
-  currentRepoNameIndex:integer;
 begin
   if (cbCurrentRepo.ItemIndex > -1)
      then currentRepoName:=cbCurrentRepo.Items[cbCurrentRepo.ItemIndex]
      else currentRepoName:='';
-  cbCurrentRepo.Clear;
-  cbCurrentRepo.Items:=config.repoNames;
-  if (currentRepoName <> '') then
-    begin
-      currentRepoNameIndex:= cbCurrentRepo.Items.IndexOf(currentRepoName);
-      cbCurrentRepo.ItemIndex:=currentRepoNameIndex;
-    end;
+     loadNames(currentRepoName);
 end;
 
 procedure TForm1.codeDirectoryChanged(sender: TObject);
@@ -100,7 +103,7 @@ var
   index:integer;
 begin
   fileContents:='';
-  configArray:=config.toStringArray;
+  configArray:=config.toStringArray; //need config to xmlDocument method as well
   for index:=0 to pred(length(configArray)) do
     begin
     fileContents:=fileContents+configArray[index];
@@ -108,6 +111,19 @@ begin
     fileContents:=fileContents+ #$0A;
     end;
   writeStream(configFileName, fileContents);
+end;
+
+procedure TForm1.loadNames(currentRepoName:string);
+var
+  currentRepoNameIndex:integer;
+begin
+  cbCurrentRepo.Clear;
+  cbCurrentRepo.Items:=config.repoNames;
+  if (currentRepoName <> '') then
+    begin
+      currentRepoNameIndex:= cbCurrentRepo.Items.IndexOf(currentRepoName);
+      cbCurrentRepo.ItemIndex:=currentRepoNameIndex;
+    end;
 end;
 
 end.

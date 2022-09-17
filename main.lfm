@@ -60,6 +60,15 @@ object Form1: TForm1
       Caption = 'CurrentRepo'
       ParentColor = False
     end
+    object Button1: TButton
+      Left = 269
+      Height = 25
+      Top = 403
+      Width = 75
+      Caption = 'Button1'
+      OnClick = Button1Click
+      TabOrder = 3
+    end
   end
   object Splitter1: TSplitter
     Left = 360

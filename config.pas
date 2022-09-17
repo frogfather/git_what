@@ -5,7 +5,7 @@ unit config;
 interface
 
 uses
-  Classes, SysUtils,fgl,fileUtil;
+  Classes, SysUtils,fgl,fileUtil,repo,dateUtils;
 type
   
   { TConfig }
@@ -13,7 +13,7 @@ type
   TConfig = class(TInterfacedObject)
     private
       fCodeDirectory:String;
-      fRepositories: specialize TFPGMap<string,string>;
+      fRepositories: specialize TFPGMap<string,TRepo>;
       fRepositoriesChanged:TNotifyEvent;
       fCodeDirectoryChanged:TNotifyEvent;
       fRescanning:boolean;
@@ -29,7 +29,7 @@ type
     constructor create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent);
     constructor create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent;lines: TStringArray);
     function toStringArray: TStringArray;
-    procedure addRepo(repoName,repoPath:string);
+    procedure addRepo(repoName:string;repo: TRepo);
     procedure clearRepos;
     procedure rescanRepos;
     property codeDirectory:string read fCodeDirectory write setCodeDirectory;
@@ -43,35 +43,45 @@ implementation
 constructor TConfig.create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent);
 begin
   //create an empty object
+  fRescanning:=true;
   fCodeDirectory:='';
-  fRepositories:= specialize TFPGMap<string,string>.Create;
+  fRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fRepositories.Sorted:=true;
   fRepositoriesChanged:=onRepositoriesChanged;
   fCodeDirectoryChanged:=onCodeDirectoryChanged;
   fExclusions:=TStringlist.Create;
   fExclusions.Add('node_modules');
   fExclusions.Add('lib');
+  fRescanning:=false;
 end;
 
 constructor TConfig.create(onRepositoriesChanged,onCodeDirectoryChanged:TNotifyEvent; lines: TStringArray);
 var
   index:integer;
   parts:TStringArray;
+  newRepo:TRepo;
 begin
-  fRepositories:= specialize TFPGMap<string,string>.Create;
+  fRescanning:=true;
+  fRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fRepositories.Sorted:=true;
   fRepositoriesChanged:=onRepositoriesChanged;
   fCodeDirectoryChanged:=onCodeDirectoryChanged;
   for index:= 0 to pred(length(lines)) do
   begin
-    //split each line on =
-    parts:=lines[index].Split('=');
-    if (length(parts)=2) then
+    //split each line on ,
+    parts:=lines[index].Split(',');
+    if (length(parts)=3) then
       begin
-        if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
-        else addRepo(parts[0],parts[1]);
+      newRepo.path:=parts[1];
+      newRepo.lastUsed:=Iso8601ToDate(parts[2]);
+      addRepo(parts[0],newRepo);
+      end else
+      if (length(parts) = 2) then
+      begin
+      if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
       end;
   end;
+  fRescanning:=false;
 end;
 
 procedure TConfig.setCodeDirectory(codeDirectory_: string);
@@ -84,14 +94,14 @@ if (directoryExists(codeDirectory_)) then
 //else raise an error?
 end;
 
-procedure TConfig.addRepo(repoName, repoPath: string);
+procedure TConfig.addRepo(repoName: string; repo:TRepo);
 var
   repoIndex:integer;
 begin
   repoIndex:=   fRepositories.IndexOf(repoName);
   if (repoIndex = -1) then
     begin
-      fRepositories.Add(repoName, repoPath);
+      fRepositories.Add(repoName, repo);
       //we don't want to fire the event handler while rescanning
       if not rescanning then fRepositoriesChanged(self);
     end;
@@ -102,7 +112,7 @@ var
   repoIndex:integer;
 begin
   fRepositories.Find(repoName,repoIndex);
-  if (repoIndex > 0) then result:= fRepositories.Data[repoIndex]
+  if (repoIndex > 0) then result:= (fRepositories.Data[repoIndex]).path
   else result:='';
 end;
 
@@ -143,6 +153,8 @@ directoryList:TStringlist;
 index:integer;
 directoryName,repoName:string;
 repoNameParts:TStringArray;
+newRepo:TRepo;
+fileModified:longint;
 begin
   chdir(codeDir);
   repoNameParts:=codeDir.Split('/');
@@ -150,7 +162,12 @@ begin
   if directoryExists('.git') then
     begin
       //add to the list of repos and don't go any deeper
-      addRepo(repoName,codeDir);
+      //if index doesn't exist look at config which will be
+      if fileExists('.git/index') then fileModified:= FileAge('.git/index')
+      else fileModified:= FileAge('.git/config');
+      newRepo.path:=codeDir;
+      newRepo.lastUsed:=FileDateToDateTime(fileModified);
+      addRepo(repoName,newRepo);
     end else if exclusions.IndexOf(repoName) = -1 then
     begin
     directoryList:=findAllDirectories(codeDir+'/',false);
@@ -175,10 +192,10 @@ begin
   result:= TStringArray.create;
   configLength:=fRepositories.Count + 1;
   setLength(Result, configLength);
-  result[0]:='code_directory='+fCodeDirectory;
+  result[0]:='code_directory,'+fCodeDirectory;
   for index:= 0 to pred(fRepositories.Count) do
     begin
-      result[index+1]:=fRepositories.Keys[index]+'='+fRepositories.Data[index];
+      result[index+1]:=fRepositories.Keys[index]+','+(fRepositories.Data[index]).path+','+DateToISO8601((fRepositories.Data[index]).lastUsed);
     end;
 end;
 
