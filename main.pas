@@ -5,7 +5,7 @@ unit main;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,FileUtilities,Fileutil, config,process;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,FileUtilities,Fileutil, config,process,gitManager;
 
 type
 
@@ -19,24 +19,20 @@ type
     lCurrentRepo: TLabel;
     lCodeDirectory: TLabel;
     ListBox1: TListBox;
-    Process1: TProcess;
     pTree: TPanel;
     pDirectory: TPanel;
     SelectDirectoryDialog1: TSelectDirectoryDialog;
     Splitter1: TSplitter;
     procedure bCodeDirectoryClick(Sender: TObject);
     procedure Button1Click(Sender: TObject);
-    procedure eCodeDirectoryChange(Sender: TObject);
+    procedure cbCurrentRepoSelect(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    function RunCommand(directory,command:string):TStringList;
   private
-    fConfig: TConfig;
-    function loadConfig(configFileName: string):TConfig;
-    procedure repositoriesChanged(sender:TObject);
-    procedure codeDirectoryChanged(sender:TObject);
-    procedure saveConfig(configFileName: String; config_ :TConfig);
+    fGitWhat: TGitWhat;
+    procedure onCodeDirectoryChanged(sender:TObject);
+    procedure onReposChanged(sender:TObject);
+    procedure onCurrentRepoChanged(sender:TObject);
     procedure loadNames(currentRepoName:string);
-    property config: TConfig read fConfig write fConfig;
   public
 
   end;
@@ -52,89 +48,65 @@ implementation
 
 procedure TForm1.bCodeDirectoryClick(Sender: TObject);
 begin
-  If selectDirectoryDialog1.Execute then config.codeDirectory:= selectDirectoryDialog1.FileName;
-end;
-
-procedure TForm1.Button1Click(Sender: TObject);
-begin
-  listbox1.Items:=runCommand('/Users/cloudsoft/Code/housekeeper-app','git branch');
-end;
-
-procedure TForm1.eCodeDirectoryChange(Sender: TObject);
-begin
-  if (eCodeDirectory.Text <> config.codeDirectory)
+  If selectDirectoryDialog1.Execute then fGitWhat.codeDirectory:= selectDirectoryDialog1.FileName;
+  if (eCodeDirectory.Text <> fGitWhat.codeDirectory)
      then eCodeDirectory.Font.Color:=clRed
      else eCodeDirectory.Font.Color:=clBlack;
 end;
 
+procedure TForm1.Button1Click(Sender: TObject);
+begin
+  listbox1.items:= fGitWhat.gitLog;
+end;
+
+procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
+begin
+  fGitwhat.currentRepo:=cbCurrentRepo.Text;
+end;
+
+
 procedure TForm1.FormShow(Sender: TObject);
 begin
-  //Read a config file containing the code directory and all git repositories
-  config:= loadConfig(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
-  loadNames('');
-  eCodeDirectory.Text:=config.codeDirectory;
+  //Create the git manager and its config
+  fGitWhat:=TGitWhat.create(getUsrDir('cloudsoft')+'/.gitwhat.cfg',@onCodeDirectoryChanged,@onReposChanged,@onCurrentRepoChanged);
+  cbCurrentRepo.Items:= fGitWhat.getRepoNames;
+  eCodeDirectory.Text:=fGitWhat.codeDirectory;
 end;
 
-function TForm1.RunCommand(directory, command: string): TStringList;
-begin
-  chdir(directory);
-  if not directoryExists('.git') then exit;
-  Process1.Executable := '/bin/sh';
-  Process1.Parameters.Add('-c');
-  Process1.Parameters.Add(command);
-  Process1.Options := Process1.Options + [poWaitOnExit, poUsePipes, poStderrToOutPut];
-  Process1.Execute;
-  result:=TStringlist.Create;
-  result.LoadFromStream(Process1.Output);
-end;
-
-function TForm1.loadConfig(configFileName: string): TConfig;
-begin
-  if (fileExists(configFileName))
-     then result:= TConfig.Create(@repositoriesChanged,@codeDirectoryChanged,openFileAsArray(configFileName, #$0A))
-     else result:= TConfig.Create(@repositoriesChanged,@codeDirectoryChanged);
-end;
-
-procedure TForm1.repositoriesChanged(sender: TObject);
-var
-  currentRepoName:String;
-begin
-  if (cbCurrentRepo.ItemIndex > -1)
-     then currentRepoName:=cbCurrentRepo.Items[cbCurrentRepo.ItemIndex]
-     else currentRepoName:='';
-     loadNames(currentRepoName);
-end;
-
-procedure TForm1.codeDirectoryChanged(sender: TObject);
-begin
+procedure TForm1.onCodeDirectoryChanged(sender: TObject);
+  begin
   if (messageDlg('','Code directory has changed. Rescan?',mtConfirmation,[mbYes, mbNo],'') = mrYes)
-     then config.rescanRepos;
+     then
+       begin
+       fGitWhat.rescanRepos;
+       eCodeDirectory.Text:=fGitWhat.codeDirectory;
+       end;
      eCodeDirectory.Font.Color:=clBlack;
 end;
 
-procedure TForm1.saveConfig(configFileName: String; config_: TConfig);
+procedure TForm1.onReposChanged(sender: TObject);
 var
-  configArray:TStringArray;
-  fileContents:string;
-  index:integer;
+  currentRepoName:String;
 begin
-  fileContents:='';
-  configArray:=config.toStringArray; //need config to xmlDocument method as well
-  for index:=0 to pred(length(configArray)) do
-    begin
-    fileContents:=fileContents+configArray[index];
-    if (index < pred(length(configArray))) then
-    fileContents:=fileContents+ #$0A;
-    end;
-  writeStream(configFileName, fileContents);
+if (cbCurrentRepo.ItemIndex > -1)
+   then currentRepoName:=cbCurrentRepo.Items[cbCurrentRepo.ItemIndex]
+   else currentRepoName:='';
+   loadNames(currentRepoName);
 end;
+
+procedure TForm1.onCurrentRepoChanged(sender: TObject);
+begin
+  //Nothing to notify at present
+messagedlg('','repo changed',mtInformation,[mbOK],0);
+end;
+
 
 procedure TForm1.loadNames(currentRepoName:string);
 var
   currentRepoNameIndex:integer;
 begin
   cbCurrentRepo.Clear;
-  cbCurrentRepo.Items:=config.repoNames;
+  cbCurrentRepo.Items:=fGitWhat.getRepoNames;
   if (currentRepoName <> '') then
     begin
       currentRepoNameIndex:= cbCurrentRepo.Items.IndexOf(currentRepoName);
