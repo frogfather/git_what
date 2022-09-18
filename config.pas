@@ -19,7 +19,6 @@ type
       fRepositoriesChanged:TNotifyEvent;
       fCodeDirectoryChanged:TNotifyEvent;
       fCurrentRepoChanged:TNotifyEvent;
-      fNoNotify:boolean;
       fExclusions:TStringlist;
       procedure setCodeDirectory(codeDirectory_:string);
       procedure setCurrentRepo(currentRepo_:string);
@@ -32,7 +31,6 @@ type
       procedure doRescanRepos(codeDir:String);
       function updateRepositories:integer;
       property exclusions: TStringlist read fExclusions;
-      property nonotify: boolean read fNoNotify write fNoNotify;
     public
     constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent);
     constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent;lines: TStringArray);
@@ -52,7 +50,6 @@ implementation
 constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent);
 begin
   //create an empty object
-  fNoNotify:=true;
   fCodeDirectory:='';
   fRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fNewRepositories:= specialize TFPGMap<string,TRepo>.Create;
@@ -63,7 +60,6 @@ begin
   fExclusions:=TStringlist.Create;
   fExclusions.Add('node_modules');
   fExclusions.Add('lib');
-  fNoNotify:=false;
 end;
 
 constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent; lines: TStringArray);
@@ -72,7 +68,6 @@ var
   parts:TStringArray;
   newRepo:TRepo;
 begin
-  fNoNotify:=true;
   fRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fNewRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fRepositories.Sorted:=true;
@@ -98,7 +93,6 @@ begin
       else if (parts[0] = 'current_repo') then fCurrentRepo := parts[1]
       end;
   end;
-  fNoNotify:=false;
 end;
 
 destructor TConfig.destroy;
