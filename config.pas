@@ -14,6 +14,7 @@ type
     private
       fCodeDirectory:String;
       fCurrentRepo:string;
+      fNewRepositories: specialize TFPGMap<string,TRepo>;
       fRepositories: specialize TFPGMap<string,TRepo>;
       fRepositoriesChanged:TNotifyEvent;
       fCodeDirectoryChanged:TNotifyEvent;
@@ -24,17 +25,21 @@ type
       procedure setCurrentRepo(currentRepo_:string);
       function getRepoPath(repoName:string):string;
       function getRepoNames:TStringlist;
+      function repoMissingOrUpdated(repoName: string; repo_: TRepo):boolean;
       procedure deleteRepo(repoName:string);
-      procedure clearRepos;
+      procedure clearNewRepos;
+      procedure addRepo(repoName:string;repo_:TRepo);
       procedure doRescanRepos(codeDir:String);
+      function updateRepositories:integer;
       property exclusions: TStringlist read fExclusions;
       property nonotify: boolean read fNoNotify write fNoNotify;
     public
-    constructor create(onRepositoriesChanged,onCodeDirectoryChanged,onCurrentRepoChanged:TNotifyEvent);
-    constructor create(onRepositoriesChanged,onCodeDirectoryChanged,onCurrentRepoChanged:TNotifyEvent;lines: TStringArray);
+    constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent);
+    constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent;lines: TStringArray);
+    destructor destroy;
     function toStringArray: TStringArray;
-    procedure addRepo(repoName:string;repo: TRepo);
-    procedure rescanRepos;
+    procedure addNewRepo(repoName:string;repo: TRepo);
+    procedure rescanRepos(codeDirChanged:boolean = false);
     property codeDirectory:string read fCodeDirectory write setCodeDirectory;
     property repoNames: TStringlist read getRepoNames;
     property currentRepo: string read fCurrentRepo write setCurrentRepo;
@@ -44,12 +49,13 @@ implementation
 
 { TConfig }
 
-constructor TConfig.create(onRepositoriesChanged,onCodeDirectoryChanged,onCurrentRepoChanged:TNotifyEvent);
+constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent);
 begin
   //create an empty object
   fNoNotify:=true;
   fCodeDirectory:='';
   fRepositories:= specialize TFPGMap<string,TRepo>.Create;
+  fNewRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fRepositories.Sorted:=true;
   fRepositoriesChanged:=onRepositoriesChanged;
   fCodeDirectoryChanged:=onCodeDirectoryChanged;
@@ -60,7 +66,7 @@ begin
   fNoNotify:=false;
 end;
 
-constructor TConfig.create(onRepositoriesChanged,onCodeDirectoryChanged,onCurrentRepoChanged:TNotifyEvent; lines: TStringArray);
+constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent; lines: TStringArray);
 var
   index:integer;
   parts:TStringArray;
@@ -68,6 +74,7 @@ var
 begin
   fNoNotify:=true;
   fRepositories:= specialize TFPGMap<string,TRepo>.Create;
+  fNewRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fRepositories.Sorted:=true;
   fRepositoriesChanged:=onRepositoriesChanged;
   fCurrentRepoChanged:=onCurrentRepoChanged;
@@ -94,9 +101,15 @@ begin
   fNoNotify:=false;
 end;
 
+destructor TConfig.destroy;
+begin
+  if fRepositories <> nil then fRepositories.Free;
+  if fNewRepositories <> nil then fNewRepositories.Free;
+end;
+
 procedure TConfig.setCodeDirectory(codeDirectory_: string);
 begin
-if (directoryExists(codeDirectory_)) then
+if (directoryExists(codeDirectory_)) and (fCodeDirectory <> codeDirectory_) then
   begin
     fCodeDirectory:=codeDirectory_;
     fCodeDirectoryChanged(self);
@@ -106,21 +119,19 @@ end;
 
 procedure TConfig.setCurrentRepo(currentRepo_: string);
 begin
+if (fCurrentRepo <> currentRepo_) then
+  begin
   fCurrentRepo:=currentRepo_;
   fCurrentRepoChanged(self);
+  end;
 end;
 
-procedure TConfig.addRepo(repoName: string; repo:TRepo);
-var
-  repoIndex:integer;
+//Adds new repo to NewRepositories map
+//This way we can check if anything's changed
+//before firing event handlers
+procedure TConfig.addNewRepo(repoName: string; repo:TRepo);
 begin
-  repoIndex:=   fRepositories.IndexOf(repoName);
-  if (repoIndex = -1) then
-    begin
-      fRepositories.Add(repoName, repo);
-      //we don't want to fire the event handler while rescanning
-      if not nonotify then fRepositoriesChanged(self);
-    end;
+  fNewRepositories.AddOrSetData(repoName, repo);
 end;
 
 function TConfig.getRepoPath(repoName: string): string;
@@ -139,7 +150,19 @@ begin
   result:=TStringlist.Create;
   for index:= 0 to pred(fRepositories.Count) do
       result.add(fRepositories.Keys[index]);
+end;
 
+function TConfig.repoMissingOrUpdated(repoName: string; repo_: TRepo
+  ): boolean;
+var
+  foundRepo:TRepo;
+begin
+  result:=false;
+  if (fRepositories.IndexOf(repoName) = -1) then result:=true else
+    begin
+    foundRepo:= fRepositories.Data[fRepositories.IndexOf(repoName)];
+    result:= (foundRepo.lastUsed <> repo_.lastUsed) or (foundRepo.path <> repo_.path);
+    end;
 end;
 
 procedure TConfig.deleteRepo(repoName: string);
@@ -147,21 +170,25 @@ var
   repoIndex:integer;
 begin
   fRepositories.Find(repoName,repoIndex);
-  if (repoIndex > 0) then
-    begin
-      fRepositories.Delete(repoIndex);
-      //we don't want to fire the event handler while rescanning
-      if not nonotify then fRepositoriesChanged(self);
-    end;
+  if (repoIndex > -1) then
+     fRepositories.Delete(repoIndex);
 end;
 
-procedure TConfig.rescanRepos;
+procedure TConfig.clearNewRepos;
 begin
-  nonotify:= true;
-  clearRepos;
+  fNewRepositories.Clear;
+end;
+
+procedure TConfig.addRepo(repoName: string; repo_: TRepo);
+begin
+  fRepositories.AddOrSetData(repoName, repo_);
+end;
+
+procedure TConfig.rescanRepos(codeDirChanged:boolean = false);
+begin
+  clearNewRepos;
   doRescanRepos(codeDirectory);
-  nonotify:=false;
-  fRepositoriesChanged(self);
+  if (updateRepositories > 0) then fRepositoriesChanged(self);
 end;
 
 procedure TConfig.doRescanRepos(codeDir: String);
@@ -184,7 +211,7 @@ begin
       else fileModified:= FileAge('.git/config');
       newRepo.path:=codeDir;
       newRepo.lastUsed:=FileDateToDateTime(fileModified);
-      addRepo(repoName,newRepo);
+      addNewRepo(repoName,newRepo);
     end else if exclusions.IndexOf(repoName) = -1 then
     begin
     directoryList:=findAllDirectories(codeDir+'/',false);
@@ -196,10 +223,32 @@ begin
     end;
 end;
 
-procedure TConfig.clearRepos;
+function TConfig.updateRepositories:integer;
+var
+index:integer;
 begin
-  fRepositories.Clear;
-  if not nonotify then fRepositoriesChanged(self);
+  result:=0;
+  //first remove any repos that are in fRepositories and not in fNewRepositories
+  index:= 0;
+    while index < fRepositories.Count do
+    begin
+    if (fNewRepositories.IndexOf(fRepositories.Keys[index]) = -1) then
+         begin
+         deleteRepo(fRepositories.Keys[index]);
+         result:=result+1;
+         end
+       else index:=index+1;
+    end;
+  //now add/update other repos
+  for index:= 0 to pred(fNewRepositories.Count) do
+    begin
+    if repoMissingOrUpdated(fNewRepositories.Keys[index],fNewRepositories.Data[index])
+       then
+          begin
+          addRepo(fNewRepositories.Keys[index],fNewRepositories.Data[index]);
+          result:=result+1;
+          end;
+    end;
 end;
 
 function TConfig.toStringArray: TStringArray;

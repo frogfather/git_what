@@ -83,8 +83,8 @@ end;
 function TGitWhat.loadConfig(configFilename: string): TConfig;
 begin
   if (fileExists(configFileName))
-     then result:= TConfig.Create(@repoListChanged,@directoryChanged,@currentRepoChanged,openFileAsArray(configFileName, #$0A))
-     else result:= TConfig.Create(@repoListChanged,@directoryChanged,@currentRepoChanged);
+     then result:= TConfig.Create(@directoryChanged,@repoListChanged,@currentRepoChanged,openFileAsArray(configFileName, #$0A))
+     else result:= TConfig.Create(@directoryChanged,@repoListChanged,@currentRepoChanged);
 end;
 
 procedure TGitWhat.saveConfig(configFileName: String);
@@ -131,7 +131,7 @@ end;
 
 procedure TGitWhat.repoListChanged(sender: TObject);
 begin
-  fCodeDirectoryChanged(self);
+  fReposChanged(self);
 end;
 
 procedure TGitWhat.currentRepoChanged(sender: TObject);
