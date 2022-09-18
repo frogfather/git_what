@@ -64,6 +64,11 @@
         <Filename Value="repo.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="gitmanager.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="gitManager"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
