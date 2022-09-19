@@ -15,7 +15,9 @@ type
     bCodeDirectory: TButton;
     Button1: TButton;
     cbCurrentRepo: TComboBox;
+    cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
+    lCurrentBranch: TLabel;
     lCurrentRepo: TLabel;
     lCodeDirectory: TLabel;
     ListBox1: TListBox;

@@ -1,11 +1,12 @@
 unit config;
 
 {$mode ObjFPC}{$H+}
+{$modeswitch nestedprocvars}
 
 interface
 
 uses
-  Classes, SysUtils,fgl,fileUtil,repo,dateUtils;
+  Classes, SysUtils,fgl,fileUtil,repo,dateUtils,branch;
 type
   
   { TConfig }
@@ -66,7 +67,6 @@ constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurren
 var
   index:integer;
   parts:TStringArray;
-  newRepo:TRepo;
 begin
   fRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fNewRepositories:= specialize TFPGMap<string,TRepo>.Create;
@@ -82,11 +82,8 @@ begin
     //split each line on ,
     parts:=lines[index].Split(',');
     if (length(parts)=3) then
-      begin
-      newRepo.path:=parts[1];
-      newRepo.lastUsed:=Iso8601ToDate(parts[2]);
-      addRepo(parts[0],newRepo);
-      end else
+       addRepo(parts[0],TRepo.create(parts[1],Iso8601ToDate(parts[2])))
+    else
       if (length(parts) = 2) then
       begin
       if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
@@ -191,20 +188,41 @@ directoryList:TStringlist;
 index:integer;
 directoryName,repoName:string;
 repoNameParts:TStringArray;
+branchFileNameParts:TStringArray;
 newRepo:TRepo;
-fileModified:longint;
+newBranch:TBranch;
+fileModified,branchModified:longint;
+branchFiles:TStringlist;
+bFIndex:Integer;
 begin
   chdir(codeDir);
   repoNameParts:=codeDir.Split('/');
-  repoName:= repoNameParts[length(repoNameParts)-1];
+  repoName:= repoNameParts[pred(length(repoNameParts))];
   if directoryExists('.git') then
     begin
       //add to the list of repos and don't go any deeper
       //if index doesn't exist look at config which will be
       if fileExists('.git/index') then fileModified:= FileAge('.git/index')
       else fileModified:= FileAge('.git/config');
-      newRepo.path:=codeDir;
-      newRepo.lastUsed:=FileDateToDateTime(fileModified);
+      newRepo:=TRepo.create(codeDir,FileDateToDateTime(fileModified));
+      if (directoryExists('.git/refs')) and (directoryExists('.git/refs/heads')) then
+        //get branches
+        begin
+        chDir(codeDir+'/.git/refs/heads');
+        branchFiles:=findAllFiles(codeDir+'/.git/refs/heads','',false);
+        if (branchFiles.Count > 0) then
+          begin
+          for bfIndex:=0 to pred(branchFiles.Count) do
+            begin
+            branchFileNameParts:=branchFiles[bfIndex].Split('/');
+            branchModified:= FileAge(branchFiles[bfIndex]);
+            newBranch.branch_name:=branchFileNameParts[pred(length(branchFileNameParts))];
+            newBranch.branch_lastModified:=FileDateToDateTime(branchModified);
+            newRepo.addBranch(newBranch);
+            end;
+          end;
+        chDir(codeDir);
+        end;
       addNewRepo(repoName,newRepo);
     end else if exclusions.IndexOf(repoName) = -1 then
     begin

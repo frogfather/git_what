@@ -61,7 +61,7 @@ end;
 
 function TGitWhat.gitLog: TStringList;
 begin
-  result:=executeCommand('/Users/cloudsoft/Code/housekeeper-app','git log');
+  result:=executeCommand('/Users/cloudsoft/Code/housekeeper-app','git checkout account-view');
 end;
 
 function TGitWhat.executeCommand(repo, command: string): TStringlist;
