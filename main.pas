@@ -34,6 +34,7 @@ type
     procedure onCodeDirectoryChanged(sender:TObject);
     procedure onReposChanged(sender:TObject);
     procedure onCurrentRepoChanged(sender:TObject);
+    procedure onCurrentBranchChanged(sender:TObject);
     procedure loadNames(currentRepoName:string);
   public
 
@@ -63,14 +64,14 @@ end;
 
 procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
 begin
-  fGitwhat.currentRepo:=cbCurrentRepo.Text;
+  fGitwhat.currentRepoName:=cbCurrentRepo.Text;
 end;
 
 
 procedure TForm1.FormShow(Sender: TObject);
 begin
   //Create the git manager and its config
-  fGitWhat:=TGitWhat.create(getUsrDir('cloudsoft')+'/.gitwhat.cfg',@onCodeDirectoryChanged,@onReposChanged,@onCurrentRepoChanged);
+  fGitWhat:=TGitWhat.create(getUsrDir('cloudsoft')+'/.gitwhat.cfg',@onCodeDirectoryChanged,@onReposChanged,@onCurrentRepoChanged,@onCurrentBranchChanged);
   cbCurrentRepo.Items:= fGitWhat.getRepoNames;
   eCodeDirectory.Text:=fGitWhat.codeDirectory;
 end;
@@ -97,12 +98,13 @@ if (cbCurrentRepo.ItemIndex > -1)
 end;
 
 procedure TForm1.onCurrentRepoChanged(sender: TObject);
-var
-  branches:TStringlist;
 begin
-  //load branches in order
-  branches:= fGitWhat.executeCommand(fGitWhat.currentRepo,'git branch');
-  listbox1.Items:=branches;
+  messagedlg('','repo changed',mtInformation,[mbOK],0);
+end;
+
+procedure TForm1.onCurrentBranchChanged(sender: TObject);
+begin
+  messagedlg('','branch changed',mtInformation,[mbOK],0);
 end;
 
 

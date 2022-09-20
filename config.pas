@@ -14,43 +14,49 @@ type
   TConfig = class(TInterfacedObject)
     private
       fCodeDirectory:String;
-      fCurrentRepo:string;
+      fCurrentRepoName:string;
       fNewRepositories: specialize TFPGMap<string,TRepo>;
       fRepositories: specialize TFPGMap<string,TRepo>;
       fRepositoriesChanged:TNotifyEvent;
       fCodeDirectoryChanged:TNotifyEvent;
       fCurrentRepoChanged:TNotifyEvent;
+      fCurrentBranchChanged:TNotifyEvent;
       fExclusions:TStringlist;
       procedure setCodeDirectory(codeDirectory_:string);
-      procedure setCurrentRepo(currentRepo_:string);
+      procedure setCurrentRepoName(currentRepoName_:string);
+      procedure setCurrentBranchName(currentBranchName_:string);
       function getRepoPath(repoName:string):string;
+      function getCurrentRepo:TRepo;
       function getRepoNames:TStringlist;
       function repoMissingOrUpdated(repoName: string; repo_: TRepo):boolean;
+      function getCurrentBranchName:string;
       procedure deleteRepo(repoName:string);
       procedure clearNewRepos;
       procedure addRepo(repoName:string;repo_:TRepo);
       procedure doRescanRepos(codeDir:String);
+      procedure setCurrentRepo(AValue: TRepo);
       function updateRepositories:integer;
+      function switchToRepo(repoName:string):boolean;
       procedure addBranches(var repo:TRepo; branchFiles:TStringlist);
       property exclusions: TStringlist read fExclusions;
+      property currentRepo: TRepo read getCurrentRepo write setCurrentRepo;
     public
-    constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent);
-    constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent;lines: TStringArray);
-    destructor destroy;
+    constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent);
+    constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent;lines: TStringArray);
     function toStringArray: TStringArray;
     procedure addNewRepo(repoName:string;repo: TRepo);
     procedure rescanRepos(codeDirChanged:boolean = false);
-    function switchToRepo(repoName:string):boolean;
     property codeDirectory:string read fCodeDirectory write setCodeDirectory;
     property repoNames: TStringlist read getRepoNames;
-    property currentRepo: string read fCurrentRepo write setCurrentRepo;
+    property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
+    property currentBranchName: string read getCurrentBranchName write setCurrentBranchName;
   end;
 
 implementation
 
 { TConfig }
 
-constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent);
+constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent);
 begin
   //create an empty object
   fCodeDirectory:='';
@@ -60,12 +66,13 @@ begin
   fRepositoriesChanged:=onRepositoriesChanged;
   fCodeDirectoryChanged:=onCodeDirectoryChanged;
   fCurrentRepoChanged:=onCurrentRepoChanged;
+  fCurrentBranchChanged:=onCurrentBranchChanged;
   fExclusions:=TStringlist.Create;
   fExclusions.Add('node_modules');
   fExclusions.Add('lib');
 end;
 
-constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent; lines: TStringArray);
+constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent; lines: TStringArray);
 var
   index:integer;
   parts:TStringArray;
@@ -75,6 +82,7 @@ begin
   fRepositories.Sorted:=true;
   fRepositoriesChanged:=onRepositoriesChanged;
   fCurrentRepoChanged:=onCurrentRepoChanged;
+  fCurrentBranchChanged:=onCurrentBranchChanged;
   fExclusions:=TStringlist.Create;
   fExclusions.Add('node_modules');
   fExclusions.Add('lib');
@@ -89,15 +97,9 @@ begin
       if (length(parts) = 2) then
       begin
       if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
-      else if (parts[0] = 'current_repo') then fCurrentRepo := parts[1]
+      else if (parts[0] = 'current_repo') then fCurrentRepoName := parts[1]
       end;
   end;
-end;
-
-destructor TConfig.destroy;
-begin
-  if fRepositories <> nil then fRepositories.Free;
-  if fNewRepositories <> nil then fNewRepositories.Free;
 end;
 
 procedure TConfig.setCodeDirectory(codeDirectory_: string);
@@ -110,13 +112,19 @@ if (directoryExists(codeDirectory_)) and (fCodeDirectory <> codeDirectory_) then
 //else raise an error?
 end;
 
-procedure TConfig.setCurrentRepo(currentRepo_: string);
+procedure TConfig.setCurrentRepoName(currentRepoName_: string);
 begin
-if (fCurrentRepo <> currentRepo_) then
+if (fCurrentRepoName <> currentRepoName_) then
   begin
-  fCurrentRepo:=currentRepo_;
-  fCurrentRepoChanged(self);
+  fCurrentRepoName:=currentRepoName_;
+  if (switchToRepo(currentRepoName_)) then fCurrentRepoChanged(self);
   end;
+end;
+
+procedure TConfig.setCurrentBranchName(currentBranchName_: string);
+begin
+  if (currentRepo <> nil) then currentRepo.currentBranch:=currentBranchName_;
+  fCurrentBranchChanged(self);
 end;
 
 //Adds new repo to NewRepositories map
@@ -141,6 +149,15 @@ begin
   else result:='';
 end;
 
+function TConfig.getCurrentRepo: TRepo;
+var
+  currentRepoIndex:integer;
+begin
+  result:=nil;
+  fRepositories.Find(fCurrentRepoName, currentRepoIndex);
+  if (currentRepoIndex > - 1) then result:= fRepositories.Data[currentRepoIndex];
+end;
+
 function TConfig.getRepoNames: TStringlist;
 var
   index:integer;
@@ -161,6 +178,11 @@ begin
     foundRepo:= fRepositories.Data[fRepositories.IndexOf(repoName)];
     result:= (foundRepo.lastUsed <> repo_.lastUsed) or (foundRepo.path <> repo_.path);
     end;
+end;
+
+function TConfig.getCurrentBranchName: string;
+begin
+  if (currentRepo <> nil) then result:= currentRepo.currentBranch;
 end;
 
 procedure TConfig.deleteRepo(repoName: string);
@@ -243,6 +265,11 @@ begin
       doRescanRepos(directoryName);
       end;
     end;
+end;
+
+procedure TConfig.setCurrentRepo(AValue: TRepo);
+begin
+
 end;
 
 function TConfig.updateRepositories:integer;
