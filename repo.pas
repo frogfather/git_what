@@ -70,8 +70,8 @@ end;
 
 constructor TRepo.create(path_: string; lastUsed_: TDateTime);
 begin
-  fPath:=path;
-  fLastUsed:=lastUsed;
+  fPath:=path_;
+  fLastUsed:=lastUsed_;
   fBranches:= TBranches.create;
 end;
 

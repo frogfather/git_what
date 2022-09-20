@@ -17,7 +17,6 @@ type
     fCodeDirectoryChanged:TNotifyEvent;
     fReposChanged:TNotifyEvent;
     fCurrentRepoChanged:TNotifyEvent;
-    function executeCommand(repo,command:string):TStringlist;
     function loadConfig(configFilename:string):TConfig;
     procedure saveConfig(configFileName: String);
     function getCodeDirectory:string;
@@ -33,6 +32,7 @@ type
     procedure rescanRepos;
     function getRepoNames:TStringlist;
     function gitLog: TStringList;
+    function executeCommand(repo,command:string):TStringlist;
     property codeDirectory: string read getCodeDirectory write setCodeDirectory;
     property currentRepo: string read getCurrentRepo write setCurrentRepo;
   end;
@@ -67,17 +67,18 @@ end;
 function TGitWhat.executeCommand(repo, command: string): TStringlist;
 begin
   //should we do this in a different thread?
-  if not directoryExists(repo) then exit;//TODO should log an error at least
-  chdir(repo);
-  if fProcess = nil then fProcess:=TProcess.Create(Nil);
-  if not directoryExists('.git') then exit;
-  fProcess.Executable := '/bin/sh';
-  fProcess.Parameters.Add('-c');
-  fProcess.Parameters.Add(command);
-  fProcess.Options := fProcess.Options + [poWaitOnExit, poUsePipes, poStderrToOutPut];
-  fProcess.Execute;
-  result:=TStringlist.Create;
-  result.LoadFromStream(fProcess.Output);
+  if config.switchToRepo(repo) then
+    begin
+    if fProcess = nil then fProcess:=TProcess.Create(Nil);
+    if not directoryExists('.git') then exit;
+    fProcess.Executable := '/bin/sh';
+    fProcess.Parameters.Add('-c');
+    fProcess.Parameters.Add(command);
+    fProcess.Options := fProcess.Options + [poWaitOnExit, poUsePipes, poStderrToOutPut];
+    fProcess.Execute;
+    result:=TStringlist.Create;
+    result.LoadFromStream(fProcess.Output);
+    end;
 end;
 
 function TGitWhat.loadConfig(configFilename: string): TConfig;

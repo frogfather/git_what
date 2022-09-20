@@ -31,6 +31,7 @@ type
       procedure addRepo(repoName:string;repo_:TRepo);
       procedure doRescanRepos(codeDir:String);
       function updateRepositories:integer;
+      procedure addBranches(var repo:TRepo; branchFiles:TStringlist);
       property exclusions: TStringlist read fExclusions;
     public
     constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent);
@@ -39,6 +40,7 @@ type
     function toStringArray: TStringArray;
     procedure addNewRepo(repoName:string;repo: TRepo);
     procedure rescanRepos(codeDirChanged:boolean = false);
+    function switchToRepo(repoName:string):boolean;
     property codeDirectory:string read fCodeDirectory write setCodeDirectory;
     property repoNames: TStringlist read getRepoNames;
     property currentRepo: string read fCurrentRepo write setCurrentRepo;
@@ -128,9 +130,14 @@ end;
 function TConfig.getRepoPath(repoName: string): string;
 var
   repoIndex:integer;
+  repo:TRepo;
 begin
   fRepositories.Find(repoName,repoIndex);
-  if (repoIndex > 0) then result:= (fRepositories.Data[repoIndex]).path
+  if (repoIndex > 0) then
+    begin
+    repo:= fRepositories.Data[repoIndex];
+     result:= repo.path
+    end
   else result:='';
 end;
 
@@ -182,6 +189,20 @@ begin
   if (updateRepositories > 0) then fRepositoriesChanged(self);
 end;
 
+function TConfig.switchToRepo(repoName: string):boolean;
+var
+  repoPath:string;
+begin
+  result:=false;
+  repoPath:=getRepoPath(repoName);
+  try
+  if directoryExists(repoPath) then chdir(repoPath);
+  result:=true;
+  finally
+    //nowt to do
+  end;
+end;
+
 procedure TConfig.doRescanRepos(codeDir: String);
 var
 directoryList:TStringlist;
@@ -201,26 +222,15 @@ begin
   if directoryExists('.git') then
     begin
       //add to the list of repos and don't go any deeper
-      //if index doesn't exist look at config which will be
+      //new repos won't have the index file. Use config in this case
       if fileExists('.git/index') then fileModified:= FileAge('.git/index')
       else fileModified:= FileAge('.git/config');
       newRepo:=TRepo.create(codeDir,FileDateToDateTime(fileModified));
       if (directoryExists('.git/refs')) and (directoryExists('.git/refs/heads')) then
-        //get branches
         begin
         chDir(codeDir+'/.git/refs/heads');
         branchFiles:=findAllFiles(codeDir+'/.git/refs/heads','',false);
-        if (branchFiles.Count > 0) then
-          begin
-          for bfIndex:=0 to pred(branchFiles.Count) do
-            begin
-            branchFileNameParts:=branchFiles[bfIndex].Split('/');
-            branchModified:= FileAge(branchFiles[bfIndex]);
-            newBranch.branch_name:=branchFileNameParts[pred(length(branchFileNameParts))];
-            newBranch.branch_lastModified:=FileDateToDateTime(branchModified);
-            newRepo.addBranch(newBranch);
-            end;
-          end;
+        if (branchFiles.Count > 0) then addBranches(newRepo,branchFiles);
         chDir(codeDir);
         end;
       addNewRepo(repoName,newRepo);
@@ -260,6 +270,23 @@ begin
           addRepo(fNewRepositories.Keys[index],fNewRepositories.Data[index]);
           result:=result+1;
           end;
+    end;
+end;
+
+procedure TConfig.addBranches(var repo: TRepo; branchFiles: TStringlist);
+var
+  bfIndex:integer;
+  branchFileNameParts:TStringArray;
+  branchModified:integer;
+  newBranch:TBranch;
+begin
+  for bfIndex:=0 to pred(branchFiles.Count) do
+    begin
+    branchFileNameParts:=branchFiles[bfIndex].Split('/');
+    branchModified:= FileAge(branchFiles[bfIndex]);
+    newBranch.branch_name:=branchFileNameParts[pred(length(branchFileNameParts))];
+    newBranch.branch_lastModified:=FileDateToDateTime(branchModified);
+    repo.addBranch(newBranch);
     end;
 end;
 

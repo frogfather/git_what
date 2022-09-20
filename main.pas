@@ -97,9 +97,12 @@ if (cbCurrentRepo.ItemIndex > -1)
 end;
 
 procedure TForm1.onCurrentRepoChanged(sender: TObject);
+var
+  branches:TStringlist;
 begin
-  //Nothing to notify at present
-messagedlg('','repo changed',mtInformation,[mbOK],0);
+  //load branches in order
+  branches:= fGitWhat.executeCommand(fGitWhat.currentRepo,'git branch');
+  listbox1.Items:=branches;
 end;
 
 
