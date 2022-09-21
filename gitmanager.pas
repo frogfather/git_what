@@ -137,15 +137,9 @@ end;
 procedure TGitWhat.currentRepoChanged(sender: TObject);
 var
   branches:TStringlist;
-  index:integer;
 begin
   //get branches
-  branches:= executeCommand(config.currentRepoName, 'git branch');
-  for index:= 0 to pred(branches.Count) do
-    begin
-    if (branches[index].Substring(0,1) = '*') then
-       config.currentBranchName:=branches[index].Substring(1);
-    end;
+  branches:= executeCommand(config.currentRepoName, 'git branch --sort=-committerdate');
   fCurrentRepoChanged(self);
 end;
 

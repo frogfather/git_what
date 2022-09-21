@@ -69,10 +69,6 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="gitManager"/>
       </Unit>
-      <Unit>
-        <Filename Value="branch.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

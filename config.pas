@@ -6,7 +6,7 @@ unit config;
 interface
 
 uses
-  Classes, SysUtils,fgl,fileUtil,repo,dateUtils,branch;
+  Classes, SysUtils,fgl,fileUtil,repo,dateUtils;
 type
   
   { TConfig }
@@ -37,7 +37,6 @@ type
       procedure setCurrentRepo(AValue: TRepo);
       function updateRepositories:integer;
       function switchToRepo(repoName:string):boolean;
-      procedure addBranches(var repo:TRepo; branchFiles:TStringlist);
       property exclusions: TStringlist read fExclusions;
       property currentRepo: TRepo read getCurrentRepo write setCurrentRepo;
     public
@@ -233,7 +232,6 @@ directoryName,repoName:string;
 repoNameParts:TStringArray;
 branchFileNameParts:TStringArray;
 newRepo:TRepo;
-newBranch:TBranch;
 fileModified,branchModified:longint;
 branchFiles:TStringlist;
 bFIndex:Integer;
@@ -248,13 +246,6 @@ begin
       if fileExists('.git/index') then fileModified:= FileAge('.git/index')
       else fileModified:= FileAge('.git/config');
       newRepo:=TRepo.create(codeDir,FileDateToDateTime(fileModified));
-      if (directoryExists('.git/refs')) and (directoryExists('.git/refs/heads')) then
-        begin
-        chDir(codeDir+'/.git/refs/heads');
-        branchFiles:=findAllFiles(codeDir+'/.git/refs/heads','',false);
-        if (branchFiles.Count > 0) then addBranches(newRepo,branchFiles);
-        chDir(codeDir);
-        end;
       addNewRepo(repoName,newRepo);
     end else if exclusions.IndexOf(repoName) = -1 then
     begin
@@ -267,7 +258,7 @@ begin
     end;
 end;
 
-procedure TConfig.setCurrentRepo(AValue: TRepo);
+procedure TConfig.setCurrentRepo(AValue:TRepo);
 begin
 
 end;
@@ -297,23 +288,6 @@ begin
           addRepo(fNewRepositories.Keys[index],fNewRepositories.Data[index]);
           result:=result+1;
           end;
-    end;
-end;
-
-procedure TConfig.addBranches(var repo: TRepo; branchFiles: TStringlist);
-var
-  bfIndex:integer;
-  branchFileNameParts:TStringArray;
-  branchModified:integer;
-  newBranch:TBranch;
-begin
-  for bfIndex:=0 to pred(branchFiles.Count) do
-    begin
-    branchFileNameParts:=branchFiles[bfIndex].Split('/');
-    branchModified:= FileAge(branchFiles[bfIndex]);
-    newBranch.branch_name:=branchFileNameParts[pred(length(branchFileNameParts))];
-    newBranch.branch_lastModified:=FileDateToDateTime(branchModified);
-    repo.addBranch(newBranch);
     end;
 end;
 
