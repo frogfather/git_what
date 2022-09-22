@@ -14,22 +14,20 @@ type
     private
     fProcess:TProcess;
     fConfig: TConfig;
-    fBranches: TStringlist;
     fCodeDirectoryChanged:TNotifyEvent;
     fReposChanged:TNotifyEvent;
     fCurrentRepoChanged:TNotifyEvent;
     fBranchesChanged:TNotifyEvent;
     fCurrentBranchChanged:TNotifyEvent;
-    function loadConfig(configFilename:string):TConfig;
-    procedure saveConfig(configFileName: String);
     function getCodeDirectory:string;
     function getCurrentRepoName:string;
-    function getCurrentBranchName: string;
     procedure setCodeDirectory(codeDirectory:string);
     procedure setCurrentRepoName(currentRepoName_:string);
-    procedure setCurrentBranchName(branchName_: string);
+    procedure setCurrentBranch(branchName_: string);
     function getCurrentRepo:TRepo;
     function getBranches:TStringlist;
+    function getCurrentBranch:string;
+    function executeCommand(repo,command:string):TStringlist;
     procedure directoryChanged(sender:TObject);
     procedure repoListChanged(sender:TObject);
     procedure currentRepoChanged(sender:TObject);
@@ -41,16 +39,15 @@ type
       onCodeDirectoryChanged,
       onReposChanged,
       onCurrentRepoChanged,
-      onBranchesChanged,
       onCurrentBranchChanged:TNotifyEvent);
     procedure rescanRepos;
     function getRepoNames:TStringlist;
-    function executeCommand(repo,command:string):TStringlist;
+    procedure saveConfig(configFileName: String);
     property codeDirectory: string read getCodeDirectory write setCodeDirectory;
     property currentRepoName: string read getCurrentRepoName write setCurrentRepoName;
     property currentrepo: TRepo read getCurrentrepo;
     property branches: TStringlist read Getbranches;
-    property currentBranchName: string read getCurrentBranchName write setCurrentBranchName;
+    property currentBranch: string read getCurrentBranch write setCurrentBranch;
   end;
 
 implementation
@@ -62,15 +59,14 @@ constructor TGitWhat.create(
   onCodeDirectoryChanged,
   onReposChanged,
   onCurrentRepoChanged,
-  onBranchesChanged,
   onCurrentBranchChanged:TNotifyEvent);
 begin
-  fConfig:=loadConfig(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
+  fConfig:=TConfig.create(@directoryChanged,@repolistChanged,@currentRepoChanged,@currentBranchChanged);
   fCodeDirectoryChanged:=onCodeDirectoryChanged;
   fReposChanged:=onReposChanged;
   fCurrentRepoChanged:=onCurrentRepoChanged;
-  fBranchesChanged:=onBranchesChanged;
   fCurrentBranchChanged:=onCurrentBranchChanged;
+  fConfig.loadConfig(openFileAsArray(configFilename,#$0A));
 end;
 
 procedure TGitWhat.rescanRepos;
@@ -97,13 +93,6 @@ function TGitWhat.executeCommand(repo, command: string): TStringlist;
   fProcess.Execute;
   result.LoadFromStream(fProcess.Output);
   end;
-
-function TGitWhat.loadConfig(configFilename: string): TConfig;
-begin
-  if (fileExists(configFileName))
-     then result:= TConfig.Create(@directoryChanged,@repoListChanged,@currentRepoChanged,@currentBranchChanged,openFileAsArray(configFileName, #$0A))
-     else result:= TConfig.Create(@directoryChanged,@repoListChanged,@currentRepoChanged,@currentBranchChanged);
-end;
 
 procedure TGitWhat.saveConfig(configFileName: String);
 var
@@ -132,11 +121,6 @@ begin
   result:=config.currentRepoName;
 end;
 
-function TGitWhat.getCurrentBranchName: string;
-begin
-  result:=config.currentBranchName;
-end;
-
 procedure TGitWhat.setCodeDirectory(codeDirectory: string);
 begin
   config.codeDirectory:=codeDirectory;
@@ -147,7 +131,7 @@ begin
   config.currentRepoName:=currentRepoName_;
 end;
 
-procedure TGitWhat.setCurrentBranchName(branchName_: string);
+procedure TGitWhat.setCurrentBranch(branchName_: string);
 var
   currentBranches,branchSwitchResult :TStringlist;
   currentBranchIndex:integer;
@@ -158,10 +142,7 @@ begin
   if (currentBranchIndex> -1) then
     begin
     //switch to this branch
-    if (currentBranches[currentBranchIndex].Substring(1,1) = '*') then exit; //already on branch
     branchSwitchResult:=executeCommand(config.currentRepo.path, 'git checkout '+branchName_.Substring(1));
-    //if result is ok
-    config.currentBranchName:=branchName_;
     end;
 end;
 
@@ -172,7 +153,21 @@ end;
 
 function TGitWhat.getBranches: TStringlist;
 begin
+  result:=executeCommand(config.currentRepo.path, 'git branch --sort=-committerdate');
+end;
 
+function TGitWhat.getCurrentBranch: string;
+var
+  branchList:TStringlist;
+  index:integer;
+begin
+  branchList:=executeCommand(config.currentRepo.path, 'git branch --sort=-committerdate');
+  for index:=0 to pred(branchList.Count) do
+    if branchList[index].Substring(0,1) = '*' then
+      begin
+      result:=branchList[index];
+      exit;
+      end;
 end;
 
 procedure TGitWhat.directoryChanged(sender: TObject);
@@ -186,8 +181,11 @@ begin
 end;
 
 procedure TGitWhat.currentRepoChanged(sender: TObject);
+  var
+  repoBranches:TStringlist;
 begin
-  fBranchesChanged(self);
+  repoBranches:=branches;
+  fCurrentRepoChanged(self);
 end;
 
 procedure TGitWhat.currentBranchChanged(sender: TObject);

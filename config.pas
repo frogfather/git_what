@@ -15,7 +15,6 @@ type
     private
       fCodeDirectory:String;
       fCurrentRepoName:string;
-      fCurrentBranchName:string;
       fNewRepositories: specialize TFPGMap<string,TRepo>;
       fRepositories: specialize TFPGMap<string,TRepo>;
       fRepositoriesChanged:TNotifyEvent;
@@ -25,7 +24,6 @@ type
       fExclusions:TStringlist;
       procedure setCodeDirectory(codeDirectory_:string);
       procedure setCurrentRepoName(currentRepoName_:string);
-      procedure setCurrentBranchName(currentBranchName_:string);
       function getRepoPath(repoName:string):string;
       function getCurrentRepo:TRepo;
       function getRepoNames:TStringlist;
@@ -39,14 +37,13 @@ type
       property exclusions: TStringlist read fExclusions;
     public
     constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent);
-    constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent;lines: TStringArray);
+    procedure loadConfig(lines:TStringArray);
     function toStringArray: TStringArray;
     procedure addNewRepo(repoName:string;repo: TRepo);
     procedure rescanRepos(codeDirChanged:boolean = false);
     property codeDirectory:string read fCodeDirectory write setCodeDirectory;
     property repoNames: TStringlist read getRepoNames;
     property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
-    property currentBranchName: string read fCurrentBranchName write setCurrentBranchName;
     property currentRepo: TRepo read getCurrentRepo;
   end;
 
@@ -70,21 +67,11 @@ begin
   fExclusions.Add('lib');
 end;
 
-constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent; lines: TStringArray);
+procedure TConfig.loadConfig(lines: TStringArray);
 var
   index:integer;
   parts:TStringArray;
 begin
-  fRepositories:= specialize TFPGMap<string,TRepo>.Create;
-  fNewRepositories:= specialize TFPGMap<string,TRepo>.Create;
-  fRepositories.Sorted:=true;
-  fRepositoriesChanged:=onRepositoriesChanged;
-  fCurrentRepoChanged:=onCurrentRepoChanged;
-  fCurrentBranchChanged:=onCurrentBranchChanged;
-  fExclusions:=TStringlist.Create;
-  fExclusions.Add('node_modules');
-  fExclusions.Add('lib');
-  fCodeDirectoryChanged:=onCodeDirectoryChanged;
   for index:= 0 to pred(length(lines)) do
   begin
     //split each line on ,
@@ -95,7 +82,7 @@ begin
       if (length(parts) = 2) then
       begin
       if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
-      else if (parts[0] = 'current_repo') then fCurrentRepoName := parts[1]
+        else if (parts[0] = 'current_repo') then fCurrentRepoName := parts[1]
       end;
   end;
 end;
@@ -117,12 +104,6 @@ if (fCurrentRepoName <> currentRepoName_) then
   fCurrentRepoName:=currentRepoName_;
   if (switchToRepo(currentRepoName_)) then fCurrentRepoChanged(self);
   end;
-end;
-
-procedure TConfig.setCurrentBranchName(currentBranchName_: string);
-begin
-  if (currentRepo <> nil) then currentBranchName:=currentBranchName_;
-  fCurrentBranchChanged(self);
 end;
 
 //Adds new repo to NewRepositories map
@@ -285,12 +266,13 @@ var
   configLength,index:integer;
 begin
   result:= TStringArray.create;
-  configLength:=fRepositories.Count + 1;
+  configLength:=fRepositories.Count + 2;
   setLength(Result, configLength);
   result[0]:='code_directory,'+fCodeDirectory;
+  result[1]:='current_repo,'+fCurrentRepoName;
   for index:= 0 to pred(fRepositories.Count) do
     begin
-      result[index+1]:=fRepositories.Keys[index]+','+(fRepositories.Data[index]).path+','+DateToISO8601((fRepositories.Data[index]).lastUsed);
+      result[index+2]:=fRepositories.Keys[index]+','+(fRepositories.Data[index]).path+','+DateToISO8601((fRepositories.Data[index]).lastUsed);
     end;
 end;
 

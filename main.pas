@@ -29,16 +29,15 @@ type
     procedure Button1Click(Sender: TObject);
     procedure cbCurrentBranchSelect(Sender: TObject);
     procedure cbCurrentRepoSelect(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
   private
     fGitWhat: TGitWhat;
     procedure onCodeDirectoryChanged(sender:TObject);
     procedure onReposChanged(sender:TObject);
     procedure onCurrentRepoChanged(sender:TObject);
-    procedure onBranchesChanged(sender:TObject);
     procedure onCurrentBranchChanged(sender:TObject);
     procedure loadNames(currentRepoName:string);
-    procedure loadBranches;
   public
 
   end;
@@ -67,12 +66,17 @@ end;
 
 procedure TForm1.cbCurrentBranchSelect(Sender: TObject);
 begin
-  fGitWhat.currentBranchName:=cbCurrentBranch.Text;
+  fGitWhat.currentBranch:=cbCurrentBranch.Text;
 end;
 
 procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
 begin
   fGitwhat.currentRepoName:=cbCurrentRepo.Text;
+end;
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  fGitWhat.saveConfig(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
 end;
 
 
@@ -84,27 +88,25 @@ begin
     @onCodeDirectoryChanged,
     @onReposChanged,
     @onCurrentRepoChanged,
-    @onBranchesChanged,
     @onCurrentBranchChanged);
-  cbCurrentRepo.Items:= fGitWhat.getRepoNames;
   eCodeDirectory.Text:=fGitWhat.codeDirectory;
+  cbCurrentRepo.Items:= fGitWhat.getRepoNames;
+  cbCurrentRepo.ItemIndex:=cbCurrentRepo.items.indexOf(fGitWhat.currentRepoName);
+  onCurrentRepoChanged(self);
 end;
 
 procedure TForm1.onCodeDirectoryChanged(sender: TObject);
   begin
-  if (messageDlg('','Code directory has changed. Rescan?',mtConfirmation,[mbYes, mbNo],'') = mrYes)
-     then
-       begin
-       fGitWhat.rescanRepos;
-       eCodeDirectory.Text:=fGitWhat.codeDirectory;
-       end;
-     eCodeDirectory.Font.Color:=clBlack;
+  fGitWhat.rescanRepos;
+  eCodeDirectory.Text:=fGitWhat.codeDirectory;
+  eCodeDirectory.Font.Color:=clBlack;
 end;
 
 procedure TForm1.onReposChanged(sender: TObject);
 var
   currentRepoName:String;
 begin
+messagedlg('','repos changed',mtInformation,[mbOK],0);
 if (cbCurrentRepo.ItemIndex > -1)
    then currentRepoName:=cbCurrentRepo.Items[cbCurrentRepo.ItemIndex]
    else currentRepoName:='';
@@ -113,21 +115,15 @@ end;
 
 procedure TForm1.onCurrentRepoChanged(sender: TObject);
 begin
-  //
-end;
-
-procedure TForm1.onBranchesChanged(sender: TObject);
-begin
-  messagedlg('','branches changed',mtInformation,[mbOK],0);
-  loadBranches;
+  cbCurrentBranch.Items:=fGitWhat.branches;
+  cbCurrentBranch.ItemIndex:=cbCurrentBranch.items.indexOf(fGitWhat.currentBranch);
 end;
 
 procedure TForm1.onCurrentBranchChanged(sender: TObject);
 begin
-  messagedlg('','branch changed',mtInformation,[mbOK],0);
-  loadBranches;
+  messagedlg('','current branch changed',mtInformation,[mbOK],0);
+  //currently no action
 end;
-
 
 procedure TForm1.loadNames(currentRepoName:string);
 var
@@ -140,13 +136,6 @@ begin
       currentRepoNameIndex:= cbCurrentRepo.Items.IndexOf(currentRepoName);
       cbCurrentRepo.ItemIndex:=currentRepoNameIndex;
     end;
-end;
-
-procedure TForm1.loadBranches;
-begin
-  cbCurrentBranch.Items:=fGitWhat.branches;
-  if (cbCurrentBranch.Items.Count > 0)
-     then cbCurrentBranch.ItemIndex:=cbCurrentBranch.items.indexOf(fGitWhat.currentBranchName);
 end;
 
 end.
