@@ -1,6 +1,7 @@
 unit config;
 
 {$mode ObjFPC}{$H+}
+{$modeswitch nestedprocvars}
 
 interface
 
@@ -13,16 +14,18 @@ type
   TConfig = class(TInterfacedObject)
     private
       fCodeDirectory:String;
-      fCurrentRepo:string;
+      fCurrentRepoName:string;
       fNewRepositories: specialize TFPGMap<string,TRepo>;
       fRepositories: specialize TFPGMap<string,TRepo>;
       fRepositoriesChanged:TNotifyEvent;
       fCodeDirectoryChanged:TNotifyEvent;
       fCurrentRepoChanged:TNotifyEvent;
+      fCurrentBranchChanged:TNotifyEvent;
       fExclusions:TStringlist;
       procedure setCodeDirectory(codeDirectory_:string);
-      procedure setCurrentRepo(currentRepo_:string);
+      procedure setCurrentRepoName(currentRepoName_:string);
       function getRepoPath(repoName:string):string;
+      function getCurrentRepo:TRepo;
       function getRepoNames:TStringlist;
       function repoMissingOrUpdated(repoName: string; repo_: TRepo):boolean;
       procedure deleteRepo(repoName:string);
@@ -30,24 +33,25 @@ type
       procedure addRepo(repoName:string;repo_:TRepo);
       procedure doRescanRepos(codeDir:String);
       function updateRepositories:integer;
+      function switchToRepo(repoName:string):boolean;
       property exclusions: TStringlist read fExclusions;
     public
-    constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent);
-    constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent;lines: TStringArray);
-    destructor destroy;
+    constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent);
+    procedure loadConfig(lines:TStringArray);
     function toStringArray: TStringArray;
     procedure addNewRepo(repoName:string;repo: TRepo);
     procedure rescanRepos(codeDirChanged:boolean = false);
     property codeDirectory:string read fCodeDirectory write setCodeDirectory;
     property repoNames: TStringlist read getRepoNames;
-    property currentRepo: string read fCurrentRepo write setCurrentRepo;
+    property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
+    property currentRepo: TRepo read getCurrentRepo;
   end;
 
 implementation
 
 { TConfig }
 
-constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent);
+constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent);
 begin
   //create an empty object
   fCodeDirectory:='';
@@ -57,48 +61,30 @@ begin
   fRepositoriesChanged:=onRepositoriesChanged;
   fCodeDirectoryChanged:=onCodeDirectoryChanged;
   fCurrentRepoChanged:=onCurrentRepoChanged;
+  fCurrentBranchChanged:=onCurrentBranchChanged;
   fExclusions:=TStringlist.Create;
   fExclusions.Add('node_modules');
   fExclusions.Add('lib');
 end;
 
-constructor TConfig.create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged:TNotifyEvent; lines: TStringArray);
+procedure TConfig.loadConfig(lines: TStringArray);
 var
   index:integer;
   parts:TStringArray;
-  newRepo:TRepo;
 begin
-  fRepositories:= specialize TFPGMap<string,TRepo>.Create;
-  fNewRepositories:= specialize TFPGMap<string,TRepo>.Create;
-  fRepositories.Sorted:=true;
-  fRepositoriesChanged:=onRepositoriesChanged;
-  fCurrentRepoChanged:=onCurrentRepoChanged;
-  fExclusions:=TStringlist.Create;
-  fExclusions.Add('node_modules');
-  fExclusions.Add('lib');
-  fCodeDirectoryChanged:=onCodeDirectoryChanged;
   for index:= 0 to pred(length(lines)) do
   begin
     //split each line on ,
     parts:=lines[index].Split(',');
     if (length(parts)=3) then
-      begin
-      newRepo.path:=parts[1];
-      newRepo.lastUsed:=Iso8601ToDate(parts[2]);
-      addRepo(parts[0],newRepo);
-      end else
+       addRepo(parts[0],TRepo.create(parts[1],Iso8601ToDate(parts[2])))
+    else
       if (length(parts) = 2) then
       begin
       if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
-      else if (parts[0] = 'current_repo') then fCurrentRepo := parts[1]
+        else if (parts[0] = 'current_repo') then fCurrentRepoName := parts[1]
       end;
   end;
-end;
-
-destructor TConfig.destroy;
-begin
-  if fRepositories <> nil then fRepositories.Free;
-  if fNewRepositories <> nil then fNewRepositories.Free;
 end;
 
 procedure TConfig.setCodeDirectory(codeDirectory_: string);
@@ -111,12 +97,12 @@ if (directoryExists(codeDirectory_)) and (fCodeDirectory <> codeDirectory_) then
 //else raise an error?
 end;
 
-procedure TConfig.setCurrentRepo(currentRepo_: string);
+procedure TConfig.setCurrentRepoName(currentRepoName_: string);
 begin
-if (fCurrentRepo <> currentRepo_) then
+if (fCurrentRepoName <> currentRepoName_) then
   begin
-  fCurrentRepo:=currentRepo_;
-  fCurrentRepoChanged(self);
+  fCurrentRepoName:=currentRepoName_;
+  if (switchToRepo(currentRepoName_)) then fCurrentRepoChanged(self);
   end;
 end;
 
@@ -131,10 +117,24 @@ end;
 function TConfig.getRepoPath(repoName: string): string;
 var
   repoIndex:integer;
+  repo:TRepo;
 begin
   fRepositories.Find(repoName,repoIndex);
-  if (repoIndex > 0) then result:= (fRepositories.Data[repoIndex]).path
+  if (repoIndex > 0) then
+    begin
+    repo:= fRepositories.Data[repoIndex];
+     result:= repo.path
+    end
   else result:='';
+end;
+
+function TConfig.getCurrentRepo: TRepo;
+var
+  currentRepoIndex:integer;
+begin
+  result:=nil;
+  fRepositories.Find(fCurrentRepoName, currentRepoIndex);
+  if (currentRepoIndex > - 1) then result:= fRepositories.Data[currentRepoIndex];
 end;
 
 function TConfig.getRepoNames: TStringlist;
@@ -185,26 +185,42 @@ begin
   if (updateRepositories > 0) then fRepositoriesChanged(self);
 end;
 
+function TConfig.switchToRepo(repoName: string):boolean;
+var
+  repoPath:string;
+begin
+  result:=false;
+  repoPath:=getRepoPath(repoName);
+  try
+  if directoryExists(repoPath) then chdir(repoPath);
+  result:=true;
+  finally
+    //nowt to do
+  end;
+end;
+
 procedure TConfig.doRescanRepos(codeDir: String);
 var
 directoryList:TStringlist;
 index:integer;
 directoryName,repoName:string;
 repoNameParts:TStringArray;
+branchFileNameParts:TStringArray;
 newRepo:TRepo;
-fileModified:longint;
+fileModified,branchModified:longint;
+branchFiles:TStringlist;
+bFIndex:Integer;
 begin
   chdir(codeDir);
   repoNameParts:=codeDir.Split('/');
-  repoName:= repoNameParts[length(repoNameParts)-1];
+  repoName:= repoNameParts[pred(length(repoNameParts))];
   if directoryExists('.git') then
     begin
       //add to the list of repos and don't go any deeper
-      //if index doesn't exist look at config which will be
+      //new repos won't have the index file. Use config in this case
       if fileExists('.git/index') then fileModified:= FileAge('.git/index')
       else fileModified:= FileAge('.git/config');
-      newRepo.path:=codeDir;
-      newRepo.lastUsed:=FileDateToDateTime(fileModified);
+      newRepo:=TRepo.create(codeDir,FileDateToDateTime(fileModified));
       addNewRepo(repoName,newRepo);
     end else if exclusions.IndexOf(repoName) = -1 then
     begin
@@ -250,12 +266,13 @@ var
   configLength,index:integer;
 begin
   result:= TStringArray.create;
-  configLength:=fRepositories.Count + 1;
+  configLength:=fRepositories.Count + 2;
   setLength(Result, configLength);
   result[0]:='code_directory,'+fCodeDirectory;
+  result[1]:='current_repo,'+fCurrentRepoName;
   for index:= 0 to pred(fRepositories.Count) do
     begin
-      result[index+1]:=fRepositories.Keys[index]+','+(fRepositories.Data[index]).path+','+DateToISO8601((fRepositories.Data[index]).lastUsed);
+      result[index+2]:=fRepositories.Keys[index]+','+(fRepositories.Data[index]).path+','+DateToISO8601((fRepositories.Data[index]).lastUsed);
     end;
 end;
 
