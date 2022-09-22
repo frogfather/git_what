@@ -35,6 +35,7 @@ type
     procedure onCodeDirectoryChanged(sender:TObject);
     procedure onReposChanged(sender:TObject);
     procedure onCurrentRepoChanged(sender:TObject);
+    procedure onBranchesChanged(sender:TObject);
     procedure onCurrentBranchChanged(sender:TObject);
     procedure loadNames(currentRepoName:string);
     procedure loadBranches;
@@ -61,7 +62,7 @@ end;
 
 procedure TForm1.Button1Click(Sender: TObject);
 begin
-  listbox1.items:= fGitWhat.gitLog;
+
 end;
 
 procedure TForm1.cbCurrentBranchSelect(Sender: TObject);
@@ -78,7 +79,13 @@ end;
 procedure TForm1.FormShow(Sender: TObject);
 begin
   //Create the git manager and its config
-  fGitWhat:=TGitWhat.create(getUsrDir('cloudsoft')+'/.gitwhat.cfg',@onCodeDirectoryChanged,@onReposChanged,@onCurrentRepoChanged,@onCurrentBranchChanged);
+  fGitWhat:=TGitWhat.create(
+    getUsrDir('cloudsoft')+'/.gitwhat.cfg',
+    @onCodeDirectoryChanged,
+    @onReposChanged,
+    @onCurrentRepoChanged,
+    @onBranchesChanged,
+    @onCurrentBranchChanged);
   cbCurrentRepo.Items:= fGitWhat.getRepoNames;
   eCodeDirectory.Text:=fGitWhat.codeDirectory;
 end;
@@ -106,13 +113,19 @@ end;
 
 procedure TForm1.onCurrentRepoChanged(sender: TObject);
 begin
-  messagedlg('','repo changed',mtInformation,[mbOK],0);
+  //
+end;
+
+procedure TForm1.onBranchesChanged(sender: TObject);
+begin
+  messagedlg('','branches changed',mtInformation,[mbOK],0);
   loadBranches;
 end;
 
 procedure TForm1.onCurrentBranchChanged(sender: TObject);
 begin
   messagedlg('','branch changed',mtInformation,[mbOK],0);
+  loadBranches;
 end;
 
 
@@ -131,10 +144,9 @@ end;
 
 procedure TForm1.loadBranches;
 begin
-  //the branches should be in order of use
-  //so the current branch is the first
-  cbCurrentBranch.Items:=fGitWhat.currentrepo.branches;
-  if (cbCurrentBranch.Items.Count > 0) then cbCurrentBranch.ItemIndex:=0;
+  cbCurrentBranch.Items:=fGitWhat.branches;
+  if (cbCurrentBranch.Items.Count > 0)
+     then cbCurrentBranch.ItemIndex:=cbCurrentBranch.items.indexOf(fGitWhat.currentBranchName);
 end;
 
 end.

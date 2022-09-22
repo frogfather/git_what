@@ -15,6 +15,7 @@ type
     private
       fCodeDirectory:String;
       fCurrentRepoName:string;
+      fCurrentBranchName:string;
       fNewRepositories: specialize TFPGMap<string,TRepo>;
       fRepositories: specialize TFPGMap<string,TRepo>;
       fRepositoriesChanged:TNotifyEvent;
@@ -29,7 +30,6 @@ type
       function getCurrentRepo:TRepo;
       function getRepoNames:TStringlist;
       function repoMissingOrUpdated(repoName: string; repo_: TRepo):boolean;
-      function getCurrentBranchName:string;
       procedure deleteRepo(repoName:string);
       procedure clearNewRepos;
       procedure addRepo(repoName:string;repo_:TRepo);
@@ -46,7 +46,7 @@ type
     property codeDirectory:string read fCodeDirectory write setCodeDirectory;
     property repoNames: TStringlist read getRepoNames;
     property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
-    property currentBranchName: string read getCurrentBranchName write setCurrentBranchName;
+    property currentBranchName: string read fCurrentBranchName write setCurrentBranchName;
     property currentRepo: TRepo read getCurrentRepo;
   end;
 
@@ -121,7 +121,7 @@ end;
 
 procedure TConfig.setCurrentBranchName(currentBranchName_: string);
 begin
-  if (currentRepo <> nil) then currentRepo.currentBranch:=currentBranchName_;
+  if (currentRepo <> nil) then currentBranchName:=currentBranchName_;
   fCurrentBranchChanged(self);
 end;
 
@@ -176,11 +176,6 @@ begin
     foundRepo:= fRepositories.Data[fRepositories.IndexOf(repoName)];
     result:= (foundRepo.lastUsed <> repo_.lastUsed) or (foundRepo.path <> repo_.path);
     end;
-end;
-
-function TConfig.getCurrentBranchName: string;
-begin
-  if (currentRepo <> nil) then result:= currentRepo.currentBranch;
 end;
 
 procedure TConfig.deleteRepo(repoName: string);
