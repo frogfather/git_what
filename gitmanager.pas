@@ -5,7 +5,7 @@ unit gitManager;
 interface
 
 uses
-  Classes, SysUtils,config,process,fileUtilities;
+  Classes, SysUtils,config,process,fileUtilities,repo;
 type
   
   { TGitWhat }
@@ -22,8 +22,11 @@ type
     procedure saveConfig(configFileName: String);
     function getCodeDirectory:string;
     function getCurrentRepoName:string;
+    function getCurrentBranchName: string;
     procedure setCodeDirectory(codeDirectory:string);
     procedure setCurrentRepoName(currentRepoName_:string);
+    procedure setCurrentBranchName(branchName_: string);
+    function getCurrentRepo:TRepo;
     procedure directoryChanged(sender:TObject);
     procedure repoListChanged(sender:TObject);
     procedure currentRepoChanged(sender:TObject);
@@ -37,6 +40,8 @@ type
     function executeCommand(repo,command:string):TStringlist;
     property codeDirectory: string read getCodeDirectory write setCodeDirectory;
     property currentRepoName: string read getCurrentRepoName write setCurrentRepoName;
+    property currentrepo: TRepo read getCurrentrepo;
+    property currentBranchName: string read getCurrentBranchName write setCurrentBranchName;
   end;
 
 implementation
@@ -64,14 +69,16 @@ end;
 
 function TGitWhat.gitLog: TStringList;
 begin
-  result:=executeCommand('/Users/cloudsoft/Code/housekeeper-app','git checkout account-view');
+  result:=executeCommand('/Users/cloudsoft/Code/housekeeper-app','git checkout master');
 end;
 
 function TGitWhat.executeCommand(repo, command: string): TStringlist;
   begin
   result:=TStringlist.Create;
+  chdir(repo);
   if fProcess = nil then fProcess:=TProcess.Create(Nil);
   if not directoryExists('.git') then exit;
+  fProcess.Parameters.Clear;
   fProcess.Executable := '/bin/sh';
   fProcess.Parameters.Add('-c');
   fProcess.Parameters.Add(command);
@@ -114,14 +121,48 @@ begin
   result:=config.currentRepoName;
 end;
 
+function TGitWhat.getCurrentBranchName: string;
+begin
+  result:=currentRepo.currentBranch;
+end;
+
 procedure TGitWhat.setCodeDirectory(codeDirectory: string);
 begin
   config.codeDirectory:=codeDirectory;
 end;
 
 procedure TGitWhat.setCurrentRepoName(currentRepoName_: string);
+var
+  branches:TStringlist;
 begin
   config.currentRepoName:=currentRepoName_;
+end;
+
+procedure TGitWhat.setCurrentBranchName(branchName_: string);
+var
+  currentBranches,branchSwitchResult :TStringlist;
+  index:integer;
+  s:String;
+begin
+  //first check if the branch still exists and if we're on it
+  currentBranches:=executeCommand(config.currentRepo.path, 'git branch --sort=-committerdate');
+  if (currentBranches.IndexOf(branchName_)> -1) then
+    begin
+    //switch to this branch
+    if (currentBranches.IndexOf(branchName_) = 0) then exit; //already on branch
+    branchSwitchResult:=executeCommand(config.currentRepo.path, 'git checkout '+branchName_.Substring(1));
+    for index:= 0 to pred(branchSwitchResult.Count) do
+      begin
+      s:=branchSwitchResult[index];
+      writeln(s);
+      end;
+    currentRepo.currentBranch:=branchName_;
+    end;
+end;
+
+function TGitWhat.getCurrentRepo: TRepo;
+begin
+  result:=fConfig.currentRepo;
 end;
 
 procedure TGitWhat.directoryChanged(sender: TObject);
@@ -135,11 +176,9 @@ begin
 end;
 
 procedure TGitWhat.currentRepoChanged(sender: TObject);
-var
-  branches:TStringlist;
 begin
-  //get branches
-  branches:= executeCommand(config.currentRepoName, 'git branch --sort=-committerdate');
+  //We can set the branches here once we know the repo has been correctly set
+  config.currentRepo.branches:=executeCommand(config.currentRepo.path, 'git branch --sort=-committerdate');
   fCurrentRepoChanged(self);
 end;
 

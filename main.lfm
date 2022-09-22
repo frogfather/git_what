@@ -75,6 +75,7 @@ object Form1: TForm1
       Top = 136
       Width = 240
       ItemHeight = 19
+      OnSelect = cbCurrentBranchSelect
       TabOrder = 4
     end
     object lCurrentBranch: TLabel

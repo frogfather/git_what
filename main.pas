@@ -27,6 +27,7 @@ type
     Splitter1: TSplitter;
     procedure bCodeDirectoryClick(Sender: TObject);
     procedure Button1Click(Sender: TObject);
+    procedure cbCurrentBranchSelect(Sender: TObject);
     procedure cbCurrentRepoSelect(Sender: TObject);
     procedure FormShow(Sender: TObject);
   private
@@ -36,6 +37,7 @@ type
     procedure onCurrentRepoChanged(sender:TObject);
     procedure onCurrentBranchChanged(sender:TObject);
     procedure loadNames(currentRepoName:string);
+    procedure loadBranches;
   public
 
   end;
@@ -60,6 +62,11 @@ end;
 procedure TForm1.Button1Click(Sender: TObject);
 begin
   listbox1.items:= fGitWhat.gitLog;
+end;
+
+procedure TForm1.cbCurrentBranchSelect(Sender: TObject);
+begin
+  fGitWhat.currentBranchName:=cbCurrentBranch.Text;
 end;
 
 procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
@@ -100,6 +107,7 @@ end;
 procedure TForm1.onCurrentRepoChanged(sender: TObject);
 begin
   messagedlg('','repo changed',mtInformation,[mbOK],0);
+  loadBranches;
 end;
 
 procedure TForm1.onCurrentBranchChanged(sender: TObject);
@@ -119,6 +127,14 @@ begin
       currentRepoNameIndex:= cbCurrentRepo.Items.IndexOf(currentRepoName);
       cbCurrentRepo.ItemIndex:=currentRepoNameIndex;
     end;
+end;
+
+procedure TForm1.loadBranches;
+begin
+  //the branches should be in order of use
+  //so the current branch is the first
+  cbCurrentBranch.Items:=fGitWhat.currentrepo.branches;
+  if (cbCurrentBranch.Items.Count > 0) then cbCurrentBranch.ItemIndex:=0;
 end;
 
 end.

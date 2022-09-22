@@ -34,11 +34,9 @@ type
       procedure clearNewRepos;
       procedure addRepo(repoName:string;repo_:TRepo);
       procedure doRescanRepos(codeDir:String);
-      procedure setCurrentRepo(AValue: TRepo);
       function updateRepositories:integer;
       function switchToRepo(repoName:string):boolean;
       property exclusions: TStringlist read fExclusions;
-      property currentRepo: TRepo read getCurrentRepo write setCurrentRepo;
     public
     constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent);
     constructor create(onCodeDirectoryChanged,onRepositoriesChanged,onCurrentRepoChanged,onCurrentBranchChanged:TNotifyEvent;lines: TStringArray);
@@ -49,6 +47,7 @@ type
     property repoNames: TStringlist read getRepoNames;
     property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
     property currentBranchName: string read getCurrentBranchName write setCurrentBranchName;
+    property currentRepo: TRepo read getCurrentRepo;
   end;
 
 implementation
@@ -256,11 +255,6 @@ begin
       doRescanRepos(directoryName);
       end;
     end;
-end;
-
-procedure TConfig.setCurrentRepo(AValue:TRepo);
-begin
-
 end;
 
 function TConfig.updateRepositories:integer;
