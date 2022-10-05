@@ -192,7 +192,7 @@ end;
 
 function TGitWhat.getCurrentRepoName: string;
 begin
-
+  result:= fCurrentRepoName;
 end;
 
 function TGitWhat.updateRepositories: integer;
@@ -301,7 +301,10 @@ begin
   //first check if the branch still exists and if we're on it
   currentBranches:=executeCommand(currentRepo.path, 'git branch --sort=-committerdate');
   if (currentBranches.IndexOf(branchName_) > -1) then
+    begin
      executeCommand(currentRepo.path, 'git checkout '+branchName_.Substring(1));
+     fCurrentBranchChanged(self);
+    end;
 end;
 
 function TGitWhat.getCurrentRepo: TRepo;
