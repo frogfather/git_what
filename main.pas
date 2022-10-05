@@ -26,7 +26,6 @@ type
     SelectDirectoryDialog1: TSelectDirectoryDialog;
     Splitter1: TSplitter;
     procedure bCodeDirectoryClick(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
     procedure cbCurrentBranchSelect(Sender: TObject);
     procedure cbCurrentRepoSelect(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -57,11 +56,6 @@ begin
   if (eCodeDirectory.Text <> fGitWhat.codeDirectory)
      then eCodeDirectory.Font.Color:=clRed
      else eCodeDirectory.Font.Color:=clBlack;
-end;
-
-procedure TForm1.Button1Click(Sender: TObject);
-begin
-
 end;
 
 procedure TForm1.cbCurrentBranchSelect(Sender: TObject);
@@ -121,8 +115,7 @@ end;
 
 procedure TForm1.onCurrentBranchChanged(sender: TObject);
 begin
-  messagedlg('','current branch changed',mtInformation,[mbOK],0);
-  //currently no action
+  onCurrentRepoChanged(self);
 end;
 
 procedure TForm1.loadNames(currentRepoName:string);

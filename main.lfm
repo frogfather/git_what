@@ -41,7 +41,7 @@ object Form1: TForm1
       Height = 22
       Top = 32
       Width = 240
-      Font.Color = clBlack
+      Font.Color = clWhite
       ParentFont = False
       TabOrder = 2
     end
@@ -67,7 +67,6 @@ object Form1: TForm1
       Top = 403
       Width = 75
       Caption = 'Button1'
-      OnClick = Button1Click
       TabOrder = 3
     end
     object cbCurrentBranch: TComboBox
