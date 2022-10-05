@@ -122,7 +122,7 @@ end;
 procedure TForm1.onCurrentBranchChanged(sender: TObject);
 begin
   messagedlg('','current branch changed',mtInformation,[mbOK],0);
-  //currently no action
+  //should reload the list of branches
 end;
 
 procedure TForm1.loadNames(currentRepoName:string);
