@@ -133,17 +133,13 @@ end;
 
 procedure TGitWhat.setCurrentBranch(branchName_: string);
 var
-  currentBranches,branchSwitchResult :TStringlist;
-  currentBranchIndex:integer;
+  currentBranches :TStringlist;
 begin
   //first check if the branch still exists and if we're on it
   currentBranches:=executeCommand(config.currentRepo.path, 'git branch --sort=-committerdate');
-  currentBranchIndex:=currentBranches.IndexOf(branchName_);
-  if (currentBranchIndex> -1) then
-    begin
-    //switch to this branch
-    branchSwitchResult:=executeCommand(config.currentRepo.path, 'git checkout '+branchName_.Substring(1));
-    end;
+  if (currentBranches.IndexOf(branchName_) > -1) then
+     executeCommand(config.currentRepo.path, 'git checkout '+branchName_.Substring(1));
+
 end;
 
 function TGitWhat.getCurrentRepo: TRepo;

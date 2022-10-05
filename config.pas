@@ -10,7 +10,6 @@ uses
 type
   
   { TConfig }
-  //TODO repositories should be an array of repository objects (TBA)
   TConfig = class(TInterfacedObject)
     private
       fCodeDirectory:String;
@@ -106,9 +105,6 @@ if (fCurrentRepoName <> currentRepoName_) then
   end;
 end;
 
-//Adds new repo to NewRepositories map
-//This way we can check if anything's changed
-//before firing event handlers
 procedure TConfig.addNewRepo(repoName: string; repo:TRepo);
 begin
   fNewRepositories.AddOrSetData(repoName, repo);
