@@ -5,7 +5,8 @@ unit main;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,FileUtilities,Fileutil, config,process,gitManager;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls,
+  StdCtrls,FileUtilities,Fileutil, config,process,gitManager,gitResponse;
 
 type
 
@@ -37,6 +38,7 @@ type
     procedure onCurrentRepoChanged(sender:TObject);
     procedure onCurrentBranchChanged(sender:TObject);
     procedure loadNames(currentRepoName:string);
+    function getCurrentBranchIndex(branchList:TStrings):Integer;
   public
 
   end;
@@ -108,14 +110,20 @@ if (cbCurrentRepo.ItemIndex > -1)
 end;
 
 procedure TForm1.onCurrentRepoChanged(sender: TObject);
+var
+  branchIndex:integer;
 begin
   cbCurrentBranch.Items:=fGitWhat.branches;
-  cbCurrentBranch.ItemIndex:=cbCurrentBranch.items.indexOf(fGitWhat.currentBranch);
+  cbCurrentBranch.ItemIndex:= getCurrentBranchIndex(cbCurrentBranch.Items);
 end;
 
 procedure TForm1.onCurrentBranchChanged(sender: TObject);
 begin
-  onCurrentRepoChanged(self);
+  //sender here will be a TGitResponse containing the result of the operation
+  if sender is TGitResponse then with sender as TGitResponse do
+    begin
+    if success then listbox1.Items.Add(results[0]);
+    end;
 end;
 
 procedure TForm1.loadNames(currentRepoName:string);
@@ -131,5 +139,11 @@ begin
     end;
 end;
 
+function TForm1.getCurrentBranchIndex(branchList:TStrings): integer;
+begin
+  for result:=0 to pred(branchList.Count) do
+    if branchList[result].Substring(0,1) = '*' then exit;
+  result:=-1;
+end;
 end.
 

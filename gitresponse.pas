@@ -13,13 +13,16 @@ type
   TGitResponse = class(TInterfacedObject, IGitResponse)
     private
       fErrors:TStringlist;
-      fResult:TStringlist;
+      fResults:TStringlist;
+      fSuccess:boolean;
       function getErrors:Tstringlist;
-      function getResult:TStringlist;
+      function getResults:TStringlist;
+      function getSuccess:boolean;
     public
-      function toString:string;
+      constructor create(commandResult:TStringlist);
       property errors:TStringlist read getErrors;
-      property result:TStringlist read getResult;
+      property results:TStringlist read getResults;
+      property success:boolean read getSuccess;
   end;
 
 implementation
@@ -31,14 +34,38 @@ begin
   result:=fErrors;
 end;
 
-function TGitResponse.getResult: TStringlist;
+function TGitResponse.getResults: TStringlist;
 begin
-  result:=fResult;
+  result:=fResults;
 end;
 
-function TGitResponse.toString: string;
+function TGitResponse.getSuccess: boolean;
 begin
-  result:=fResult.CommaText;
+  result:=fSuccess;
+end;
+
+constructor TGitResponse.create(commandResult: TStringlist);
+begin
+  if (commandResult.Count > 0) then
+    begin
+      if (commandResult[0].IndexOf('error') > -1) then
+        begin
+          fErrors:=commandResult;
+          fResults:=TStringlist.Create;
+          fSuccess:=false;
+        end else
+        begin
+          fErrors:=TStringlist.Create;
+          fResults:=commandResult;
+          fSuccess:=true;
+        end;
+    end else
+    begin
+      fResults:=TStringlist.Create;
+      fErrors:=TStringlist.Create;
+      fErrors.Add('No response');
+      fSuccess:=false;
+    end;
 end;
 
 end.

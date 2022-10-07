@@ -10,9 +10,9 @@ type
   IGitResponse = interface
   ['{b5a0657a-6cf2-4f5b-b95e-1467f901ca26}']
   function getErrors:TStringlist;
-  function getResult: TStringlist;
+  function getResults: TStringlist;
   property errors:TStringlist read getErrors;
-  property result:TStringlist read getResult;
+  property results:TStringlist read getResults;
   end;
 
 implementation

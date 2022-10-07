@@ -5,7 +5,7 @@ unit git_api;
 interface
 
 uses
-  Classes, SysUtils,process,repo;
+  Classes, SysUtils,process,repo,gitResponse;
 type
   //For executing git commands and returning results in a standard form
   
@@ -22,8 +22,8 @@ type
     property params: TStringlist read fParams;
     public
     constructor create(repo_:TRepo);
-    function getBranches:TStringList;
-    function changeBranch(branchName:string):TStringList;
+    function getBranches:TGitResponse;
+    function changeBranch(branchName:string):TGitResponse;
   end;
 
 implementation
@@ -66,17 +66,18 @@ begin
   if default then fParams.Add('-c');
 end;
 
-function TGitApi.getBranches: TStringList;
+function TGitApi.getBranches: TGitResponse;
 begin
+  resetParams;
   params.Add('git branch --sort=-committerdate');
-  result:= executeCommand;
+  result:= TGitResponse.Create(executeCommand);
 end;
 
-function TGitApi.changeBranch(branchName: string): TStringList;
+function TGitApi.changeBranch(branchName: string): TGitResponse;
 begin
   resetParams;
   params.Add('git checkout '+branchName);
-  result:= executeCommand;
+  result:= TGitResponse.Create(executeCommand);
 end;
 
 

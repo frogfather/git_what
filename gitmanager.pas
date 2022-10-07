@@ -5,7 +5,7 @@ unit gitManager;
 interface
 
 uses
-  Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,git_api;
+  Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,git_api,gitResponse;
 type
   
   { TGitWhat }
@@ -14,6 +14,7 @@ type
     private
     fCodeDirectory:String;
     fCurrentRepoName:string;
+    fCurrentBranch: string;
     fNewRepositories: specialize TFPGMap<string,TRepo>;
     fRepositories: specialize TFPGMap<string,TRepo>;
     fExclusions:TStringlist;
@@ -28,17 +29,12 @@ type
     procedure addNewRepo(repoName: string; repo:TRepo);
     procedure addRepo(repoName: string; repo_: TRepo);
     procedure deleteRepo(repoName: string);
-    procedure setCodeDirectory(codeDirectory:string);
-    procedure setCurrentRepoName(currentRepoName_:string);
+    procedure setCodeDirectory(codeDirectory_:string);
+    procedure setCurrentRepoName(repoName_:string);
     procedure setCurrentBranch(branchName_: string);
     function getCurrentRepo:TRepo;
     function getBranches:TStringlist;
-    function getCurrentBranch:string;
     function toStringArray:TStringArray;
-    procedure directoryChanged(sender:TObject);
-    procedure repoListChanged(sender:TObject);
-    procedure currentRepoChanged(sender:TObject);
-    procedure currentBranchChanged(sender:TObject);
     property exclusions: TStringlist read fExclusions;
     public
     constructor create(
@@ -54,8 +50,8 @@ type
     property codeDirectory: string read fCodeDirectory write setCodeDirectory;
     property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
     property currentrepo: TRepo read getCurrentrepo;
-    property branches: TStringlist read Getbranches;
-    property currentBranch: string read getCurrentBranch write setCurrentBranch;
+    property branches: TStringList read Getbranches;
+    property currentBranch: string read fCurrentBranch write setCurrentBranch;
   end;
 
 implementation
@@ -243,36 +239,45 @@ begin
   if (repoIndex > -1) then
      fRepositories.Delete(repoIndex);
 end;
+{ Actions that change state }
 
-procedure TGitWhat.setCodeDirectory(codeDirectory: string);
+procedure TGitWhat.setCodeDirectory(codeDirectory_: string);
 begin
-  if (directoryExists(codeDirectory)) and (fCodeDirectory <> codeDirectory) then
+  if (directoryExists(codeDirectory_)) and (fCodeDirectory <> codeDirectory_) then
   begin
-    fCodeDirectory:=codeDirectory;
+    chDir(codeDirectory_);
+    fCodeDirectory:=codeDirectory_;
     fCodeDirectoryChanged(self);
-  end;
-//else raise an error?
+  end else raise Exception.Create('Directory does not exist');
 end;
 
-procedure TGitWhat.setCurrentRepoName(currentRepoName_: string);
+procedure TGitWhat.setCurrentRepoName(repoName_: string);
+var
+  repoIndex:integer;
 begin
-  if (fCurrentRepoName <> currentRepoName_) then
-  fCurrentRepoName:=currentRepoName_;
+  fRepositories.Find(repoName_, repoIndex);
+  if (repoIndex > 0) and (fCurrentRepoName <> repoName_) then
+    begin
+    chDir(fRepositories.Data[repoIndex].path);
+    fCurrentRepoName:=repoName_;
+    fCurrentRepoChanged(self);
+    end;
 end;
 
 procedure TGitWhat.setCurrentBranch(branchName_: string);
 var
-  currentBranches :TStringlist;
+  branchResponse :TGitResponse;
   gitApi: TGitApi;
 begin
-  currentBranches:= getBranches;
-  if (currentBranches.IndexOf(branchName_) > -1) then
+  gitApi:=TGitApi.create(currentRepo);
+  branchResponse:= gitApi.getBranches;
+  if branchResponse.success then
     begin
-     gitApi:=TGitApi.create(currentRepo);
-     gitApi.changeBranch(branchName_.Substring(1));
-     fCurrentBranchChanged(self);
-    end;
+      if (branchResponse.results.IndexOf(branchName_) > -1)
+         then fCurrentBranchChanged(gitApi.changeBranch(branchName_.Substring(1)));
+    end else fCurrentBranchChanged(branchResponse);
 end;
+{ Commands that don't change state }
 
 function TGitWhat.getCurrentRepo: TRepo;
 var
@@ -280,54 +285,19 @@ var
 begin
   result:=nil;
   fRepositories.Find(fCurrentRepoName, currentRepoIndex);
-  if (currentRepoIndex > - 1) then result:= fRepositories.Data[currentRepoIndex];
+  if (currentRepoIndex > 0) then result:= fRepositories.Data[currentRepoIndex];
 end;
 
 function TGitWhat.getBranches: TStringlist;
 var
   gitApi: TGitApi;
+  branchResponse:TgitResponse;
 begin
   gitApi:=TGitApi.create(currentRepo);
-  result:=gitApi.getBranches;
+  branchResponse:=gitApi.getBranches;
+  if branchResponse.success
+     then result:= branchResponse.results;
 end;
-
-function TGitWhat.getCurrentBranch: string;
-var
-  gitApi: TGitApi;
-  branchList:TStringlist;
-  index:integer;
-begin
-  gitApi:=TGitApi.create(currentRepo);
-  branchList:=gitApi.getBranches;
-  for index:=0 to pred(branchList.Count) do
-    if branchList[index].Substring(0,1) = '*' then
-      begin
-      result:=branchList[index];
-      exit;
-      end;
-end;
-
-procedure TGitWhat.directoryChanged(sender: TObject);
-begin
-  fCodeDirectoryChanged(self);
-end;
-
-procedure TGitWhat.repoListChanged(sender: TObject);
-begin
-  fRepositoriesChanged(self);
-end;
-
-procedure TGitWhat.currentRepoChanged(sender: TObject);
-begin
-  fCurrentRepoChanged(self);
-end;
-
-procedure TGitWhat.currentBranchChanged(sender: TObject);
-begin
-  fcurrentBranchChanged(self);
-end;
-
-
 
 end.
 
