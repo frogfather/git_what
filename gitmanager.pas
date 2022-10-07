@@ -21,10 +21,7 @@ type
     fCodeDirectoryChanged:TNotifyEvent;
     fRepositoriesChanged:TNotifyEvent;
     fCurrentRepoChanged:TNotifyEvent;
-    fBranchesChanged:TNotifyEvent;
     fCurrentBranchChanged:TNotifyEvent;
-    function getCodeDirectory:string;
-    function getCurrentRepoName:string;
     function updateRepositories:integer;
     function repoMissingOrUpdated(repoName: string; repo_: TRepo): boolean;
     procedure loadConfig(lines: TStringArray);
@@ -56,8 +53,8 @@ type
     procedure doRescanRepos(codeDir: String);
     function getRepoNames:TStringlist;
     procedure saveConfig(configFileName: String);
-    property codeDirectory: string read getCodeDirectory write setCodeDirectory;
-    property currentRepoName: string read getCurrentRepoName write setCurrentRepoName;
+    property codeDirectory: string read fCodeDirectory write setCodeDirectory;
+    property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
     property currentrepo: TRepo read getCurrentrepo;
     property branches: TStringlist read Getbranches;
     property currentBranch: string read getCurrentBranch write setCurrentBranch;
@@ -101,11 +98,8 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
   index:integer;
   directoryName,repoName:string;
   repoNameParts:TStringArray;
-  branchFileNameParts:TStringArray;
   newRepo:TRepo;
-  fileModified,branchModified:longint;
-  branchFiles:TStringlist;
-  bFIndex:Integer;
+  fileModified:longint;
   begin
     chdir(codeDir);
     repoNameParts:=codeDir.Split('/');
@@ -183,16 +177,6 @@ begin
     fileContents:=fileContents+ #$0A;
     end;
   writeStream(configFileName, fileContents);
-end;
-
-function TGitWhat.getCodeDirectory: string;
-begin
-  result:=fCodeDirectory;
-end;
-
-function TGitWhat.getCurrentRepoName: string;
-begin
-  result:= fCurrentRepoName;
 end;
 
 function TGitWhat.updateRepositories: integer;
@@ -302,6 +286,8 @@ begin
   currentBranches:=executeCommand(currentRepo.path, 'git branch --sort=-committerdate');
   if (currentBranches.IndexOf(branchName_) > -1) then
     begin
+     //TODO this should return an object with a success property, a message and data
+     //a bit like a regular api call
      executeCommand(currentRepo.path, 'git checkout '+branchName_.Substring(1));
      fCurrentBranchChanged(self);
     end;
