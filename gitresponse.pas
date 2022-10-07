@@ -5,17 +5,41 @@ unit gitResponse;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils,gitResponseInterface;
 type
-  IGitResponse = interface
-  ['{b5a0657a-6cf2-4f5b-b95e-1467f901ca26}']
-  function getErrors:TStringlist;
-  function getResult: String;
-  property errors:TStringlist read getErrors;
-  property result:string read getResult;
+  
+  { TGitResponse }
+
+  TGitResponse = class(TInterfacedObject, IGitResponse)
+    private
+      fErrors:TStringlist;
+      fResult:TStringlist;
+      function getErrors:Tstringlist;
+      function getResult:TStringlist;
+    public
+      function toString:string;
+      property errors:TStringlist read getErrors;
+      property result:TStringlist read getResult;
   end;
 
 implementation
+
+{ TGitResponse }
+
+function TGitResponse.getErrors: Tstringlist;
+begin
+  result:=fErrors;
+end;
+
+function TGitResponse.getResult: TStringlist;
+begin
+  result:=fResult;
+end;
+
+function TGitResponse.toString: string;
+begin
+  result:=fResult.CommaText;
+end;
 
 end.
 

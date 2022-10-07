@@ -70,6 +70,11 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="gitresponseinterface.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="gitResponseInterface"/>
+      </Unit>
+      <Unit>
         <Filename Value="gitresponse.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="gitResponse"/>
