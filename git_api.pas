@@ -15,7 +15,11 @@ type
     private
     fProcess:TProcess;
     fRepo:TRepo;
-    function execute(parameters:TStringList):TStringList;
+    fParams:TStringlist;
+    function executeCommand:TStringList;
+    procedure clearParams;
+    procedure resetParams(default:boolean = true);
+    property params: TStringlist read fParams;
     public
     constructor create(repo_:TRepo);
     function getBranches:TStringList;
@@ -30,9 +34,10 @@ constructor TGitApi.create(repo_: TRepo);
 begin
   fRepo:=repo_;
   fProcess:=TProcess.Create(Nil);
+  fParams:=TStringlist.Create;
 end;
 
-function TGitApi.execute(parameters: TStringList): TStringList;
+function TGitApi.executeCommand: TStringList;
 var
   param:integer;
 begin
@@ -41,35 +46,37 @@ begin
   if not directoryExists('.git') then exit;
   fProcess.Parameters.Clear;
   fProcess.Executable := '/bin/sh';
-  for param:= 0 to pred(parameters.Count) do
+  for param:= 0 to pred(params.Count) do
     begin
-    fProcess.Parameters.Add(parameters[param])
+    fProcess.Parameters.Add(params[param])
     end;
-  //fProcess.Parameters.Add('-c');
-  //fProcess.Parameters.Add(command);
   fProcess.Options := fProcess.Options + [poWaitOnExit, poUsePipes, poStderrToOutPut];
   fProcess.Execute;
   result.LoadFromStream(fProcess.Output);
 end;
 
-function TGitApi.getBranches: TStringList;
-var
-  params:TStringlist;
+procedure TGitApi.clearParams;
 begin
-  params:=TStringlist.Create;
-  params.Add('-c');
+  fParams.Clear;
+end;
+
+procedure TGitApi.resetParams(default:boolean);
+begin
+  clearParams;
+  if default then fParams.Add('-c');
+end;
+
+function TGitApi.getBranches: TStringList;
+begin
   params.Add('git branch --sort=-committerdate');
-  result:= execute(params);
+  result:= executeCommand;
 end;
 
 function TGitApi.changeBranch(branchName: string): TStringList;
-var
-  params:TStringlist;
 begin
-  params:=TStringlist.Create;
-  params.Add('-c');
+  resetParams;
   params.Add('git checkout '+branchName);
-  result:= execute(params);
+  result:= executeCommand;
 end;
 
 
