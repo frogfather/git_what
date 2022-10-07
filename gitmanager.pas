@@ -5,14 +5,13 @@ unit gitManager;
 interface
 
 uses
-  Classes, SysUtils,process,fileUtilities,fileUtil,repo,fgl,dateUtils;
+  Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,git_api;
 type
   
   { TGitWhat }
 
   TGitWhat = class(TInterfacedObject)
     private
-    fProcess:TProcess;
     fCodeDirectory:String;
     fCurrentRepoName:string;
     fNewRepositories: specialize TFPGMap<string,TRepo>;
@@ -35,7 +34,6 @@ type
     function getCurrentRepo:TRepo;
     function getBranches:TStringlist;
     function getCurrentBranch:string;
-    function executeCommand(repo,command:string):TStringlist;
     function toStringArray:TStringArray;
     procedure directoryChanged(sender:TObject);
     procedure repoListChanged(sender:TObject);
@@ -85,6 +83,43 @@ begin
   loadConfig(openFileAsArray(configFilename,#$0A));
 end;
 
+procedure TGitWhat.loadConfig(lines: TStringArray);
+var
+  index:integer;
+  parts:TStringArray;
+begin
+  for index:= 0 to pred(length(lines)) do
+  begin
+    //split each line on ,
+    parts:=lines[index].Split(',');
+    if (length(parts)=3) then
+       addRepo(parts[0],TRepo.create(parts[1],Iso8601ToDate(parts[2])))
+    else
+      if (length(parts) = 2) then
+      begin
+      if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
+        else if (parts[0] = 'current_repo') then fCurrentRepoName := parts[1]
+      end;
+  end;
+end;
+
+procedure TGitWhat.saveConfig(configFileName: String);
+var
+  configArray:TStringArray;
+  fileContents:string;
+  index:integer;
+begin
+  fileContents:='';
+  configArray:= toStringArray; //need config to xmlDocument method as well
+  for index:=0 to pred(length(configArray)) do
+    begin
+    fileContents:=fileContents+configArray[index];
+    if (index < pred(length(configArray))) then
+    fileContents:=fileContents+ #$0A;
+    end;
+  writeStream(configFileName, fileContents);
+end;
+
 procedure TGitWhat.rescanRepos;
 begin
   clearNewRepos;
@@ -106,8 +141,6 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
     repoName:= repoNameParts[pred(length(repoNameParts))];
     if directoryExists('.git') then
       begin
-        //add to the list of repos and don't go any deeper
-        //new repos won't have the index file. Use config in this case
         if fileExists('.git/index') then fileModified:= FileAge('.git/index')
         else fileModified:= FileAge('.git/config');
         newRepo:=TRepo.create(codeDir,FileDateToDateTime(fileModified));
@@ -132,21 +165,6 @@ begin
       result.add(fRepositories.Keys[index]);
 end;
 
-function TGitWhat.executeCommand(repo, command: string): TStringlist;
-  begin
-  result:=TStringlist.Create;
-  chdir(repo);
-  if fProcess = nil then fProcess:=TProcess.Create(Nil);
-  if not directoryExists('.git') then exit;
-  fProcess.Parameters.Clear;
-  fProcess.Executable := '/bin/sh';
-  fProcess.Parameters.Add('-c');
-  fProcess.Parameters.Add(command);
-  fProcess.Options := fProcess.Options + [poWaitOnExit, poUsePipes, poStderrToOutPut];
-  fProcess.Execute;
-  result.LoadFromStream(fProcess.Output);
-  end;
-
 function TGitWhat.toStringArray: TStringArray;
 var
   configLength,index:integer;
@@ -160,23 +178,6 @@ begin
     begin
       result[index+2]:=fRepositories.Keys[index]+','+(fRepositories.Data[index]).path+','+DateToISO8601((fRepositories.Data[index]).lastUsed);
     end;
-end;
-
-procedure TGitWhat.saveConfig(configFileName: String);
-var
-  configArray:TStringArray;
-  fileContents:string;
-  index:integer;
-begin
-  fileContents:='';
-  configArray:= toStringArray; //need config to xmlDocument method as well
-  for index:=0 to pred(length(configArray)) do
-    begin
-    fileContents:=fileContents+configArray[index];
-    if (index < pred(length(configArray))) then
-    fileContents:=fileContents+ #$0A;
-    end;
-  writeStream(configFileName, fileContents);
 end;
 
 function TGitWhat.updateRepositories: integer;
@@ -219,26 +220,6 @@ begin
     end;
 end;
 
-procedure TGitWhat.loadConfig(lines: TStringArray);
-var
-  index:integer;
-  parts:TStringArray;
-begin
-  for index:= 0 to pred(length(lines)) do
-  begin
-    //split each line on ,
-    parts:=lines[index].Split(',');
-    if (length(parts)=3) then
-       addRepo(parts[0],TRepo.create(parts[1],Iso8601ToDate(parts[2])))
-    else
-      if (length(parts) = 2) then
-      begin
-      if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
-        else if (parts[0] = 'current_repo') then fCurrentRepoName := parts[1]
-      end;
-  end;
-end;
-
 procedure TGitWhat.clearNewRepos;
 begin
   fNewRepositories.Clear;
@@ -275,20 +256,20 @@ end;
 
 procedure TGitWhat.setCurrentRepoName(currentRepoName_: string);
 begin
+  if (fCurrentRepoName <> currentRepoName_) then
   fCurrentRepoName:=currentRepoName_;
 end;
 
 procedure TGitWhat.setCurrentBranch(branchName_: string);
 var
   currentBranches :TStringlist;
+  gitApi: TGitApi;
 begin
-  //first check if the branch still exists and if we're on it
-  currentBranches:=executeCommand(currentRepo.path, 'git branch --sort=-committerdate');
+  currentBranches:= getBranches;
   if (currentBranches.IndexOf(branchName_) > -1) then
     begin
-     //TODO this should return an object with a success property, a message and data
-     //a bit like a regular api call
-     executeCommand(currentRepo.path, 'git checkout '+branchName_.Substring(1));
+     gitApi:=TGitApi.create(currentRepo);
+     gitApi.changeBranch(branchName_.Substring(1));
      fCurrentBranchChanged(self);
     end;
 end;
@@ -303,16 +284,21 @@ begin
 end;
 
 function TGitWhat.getBranches: TStringlist;
+var
+  gitApi: TGitApi;
 begin
-  result:=executeCommand(currentRepo.path, 'git branch --sort=-committerdate');
+  gitApi:=TGitApi.create(currentRepo);
+  result:=gitApi.getBranches;
 end;
 
 function TGitWhat.getCurrentBranch: string;
 var
+  gitApi: TGitApi;
   branchList:TStringlist;
   index:integer;
 begin
-  branchList:=executeCommand(currentRepo.path, 'git branch --sort=-committerdate');
+  gitApi:=TGitApi.create(currentRepo);
+  branchList:=gitApi.getBranches;
   for index:=0 to pred(branchList.Count) do
     if branchList[index].Substring(0,1) = '*' then
       begin

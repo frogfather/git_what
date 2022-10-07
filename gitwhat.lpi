@@ -65,6 +65,10 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="gitManager"/>
       </Unit>
+      <Unit>
+        <Filename Value="git_api.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
