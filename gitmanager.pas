@@ -32,6 +32,8 @@ type
     procedure setCodeDirectory(codeDirectory_:string);
     procedure setCurrentRepoName(repoName_:string);
     procedure setCurrentBranch(branchName_: string);
+    procedure rescanRepos;
+    procedure doRescanRepos(codeDir: String);
     function getCurrentRepo:TRepo;
     function getBranches:TStringlist;
     function toStringArray:TStringArray;
@@ -43,8 +45,6 @@ type
       onReposChanged,
       onCurrentRepoChanged,
       onCurrentBranchChanged:TNotifyEvent);
-    procedure rescanRepos;
-    procedure doRescanRepos(codeDir: String);
     function getRepoNames:TStringlist;
     procedure saveConfig(configFileName: String);
     property codeDirectory: string read fCodeDirectory write setCodeDirectory;
@@ -72,11 +72,15 @@ begin
   fExclusions:=TStringlist.Create;
   fExclusions.Add('node_modules');
   fExclusions.Add('lib');
+  fCodeDirectory:='';
+  fCurrentRepoName:='';
+  fCurrentBranch:='';
   fCodeDirectoryChanged:=onCodeDirectoryChanged;
   fRepositoriesChanged:=onReposChanged;
   fCurrentRepoChanged:=onCurrentRepoChanged;
   fCurrentBranchChanged:=onCurrentBranchChanged;
-  loadConfig(openFileAsArray(configFilename,#$0A));
+  if (fileExists(configFileName)) then
+     loadConfig(openFileAsArray(configFilename,#$0A));
 end;
 
 procedure TGitWhat.loadConfig(lines: TStringArray);
@@ -247,6 +251,7 @@ begin
   begin
     chDir(codeDirectory_);
     fCodeDirectory:=codeDirectory_;
+    rescanRepos;
     fCodeDirectoryChanged(self);
   end else raise Exception.Create('Directory does not exist');
 end;
@@ -296,7 +301,8 @@ begin
   gitApi:=TGitApi.create(currentRepo);
   branchResponse:=gitApi.getBranches;
   if branchResponse.success
-     then result:= branchResponse.results;
+     then result:= branchResponse.results
+     else result:= TStringlist.Create;
 end;
 
 end.

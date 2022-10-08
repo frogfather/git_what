@@ -93,7 +93,6 @@ end;
 
 procedure TForm1.onCodeDirectoryChanged(sender: TObject);
   begin
-  fGitWhat.rescanRepos;
   eCodeDirectory.Text:=fGitWhat.codeDirectory;
   eCodeDirectory.Font.Color:=clBlack;
 end;
@@ -102,7 +101,6 @@ procedure TForm1.onReposChanged(sender: TObject);
 var
   currentRepoName:String;
 begin
-messagedlg('','repos changed',mtInformation,[mbOK],0);
 if (cbCurrentRepo.ItemIndex > -1)
    then currentRepoName:=cbCurrentRepo.Items[cbCurrentRepo.ItemIndex]
    else currentRepoName:='';
@@ -131,6 +129,7 @@ var
   currentRepoNameIndex:integer;
 begin
   cbCurrentRepo.Clear;
+  cbCurrentBranch.Clear;
   cbCurrentRepo.Items:=fGitWhat.getRepoNames;
   if (currentRepoName <> '') then
     begin

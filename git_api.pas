@@ -42,6 +42,7 @@ var
   param:integer;
 begin
   result:=TStringlist.Create;
+  if (fRepo = nil) then exit;
   chdir(fRepo.path);
   if not directoryExists('.git') then exit;
   fProcess.Parameters.Clear;
