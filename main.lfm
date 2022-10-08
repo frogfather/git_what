@@ -41,7 +41,7 @@ object Form1: TForm1
       Height = 22
       Top = 32
       Width = 240
-      Font.Color = clWhite
+      Font.Color = clBlack
       ParentFont = False
       TabOrder = 2
     end

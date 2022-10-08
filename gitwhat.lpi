@@ -65,6 +65,20 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="gitManager"/>
       </Unit>
+      <Unit>
+        <Filename Value="git_api.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="gitresponseinterface.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="gitResponseInterface"/>
+      </Unit>
+      <Unit>
+        <Filename Value="gitresponse.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="gitResponse"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

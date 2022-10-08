@@ -5,26 +5,23 @@ unit gitManager;
 interface
 
 uses
-  Classes, SysUtils,process,fileUtilities,fileUtil,repo,fgl,dateUtils;
+  Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,git_api,gitResponse;
 type
   
   { TGitWhat }
 
   TGitWhat = class(TInterfacedObject)
     private
-    fProcess:TProcess;
     fCodeDirectory:String;
     fCurrentRepoName:string;
+    fCurrentBranch: string;
     fNewRepositories: specialize TFPGMap<string,TRepo>;
     fRepositories: specialize TFPGMap<string,TRepo>;
     fExclusions:TStringlist;
     fCodeDirectoryChanged:TNotifyEvent;
     fRepositoriesChanged:TNotifyEvent;
     fCurrentRepoChanged:TNotifyEvent;
-    fBranchesChanged:TNotifyEvent;
     fCurrentBranchChanged:TNotifyEvent;
-    function getCodeDirectory:string;
-    function getCurrentRepoName:string;
     function updateRepositories:integer;
     function repoMissingOrUpdated(repoName: string; repo_: TRepo): boolean;
     procedure loadConfig(lines: TStringArray);
@@ -32,18 +29,14 @@ type
     procedure addNewRepo(repoName: string; repo:TRepo);
     procedure addRepo(repoName: string; repo_: TRepo);
     procedure deleteRepo(repoName: string);
-    procedure setCodeDirectory(codeDirectory:string);
-    procedure setCurrentRepoName(currentRepoName_:string);
+    procedure setCodeDirectory(codeDirectory_:string);
+    procedure setCurrentRepoName(repoName_:string);
     procedure setCurrentBranch(branchName_: string);
+    procedure rescanRepos;
+    procedure doRescanRepos(codeDir: String);
     function getCurrentRepo:TRepo;
     function getBranches:TStringlist;
-    function getCurrentBranch:string;
-    function executeCommand(repo,command:string):TStringlist;
     function toStringArray:TStringArray;
-    procedure directoryChanged(sender:TObject);
-    procedure repoListChanged(sender:TObject);
-    procedure currentRepoChanged(sender:TObject);
-    procedure currentBranchChanged(sender:TObject);
     property exclusions: TStringlist read fExclusions;
     public
     constructor create(
@@ -52,15 +45,13 @@ type
       onReposChanged,
       onCurrentRepoChanged,
       onCurrentBranchChanged:TNotifyEvent);
-    procedure rescanRepos;
-    procedure doRescanRepos(codeDir: String);
     function getRepoNames:TStringlist;
     procedure saveConfig(configFileName: String);
-    property codeDirectory: string read getCodeDirectory write setCodeDirectory;
-    property currentRepoName: string read getCurrentRepoName write setCurrentRepoName;
+    property codeDirectory: string read fCodeDirectory write setCodeDirectory;
+    property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
     property currentrepo: TRepo read getCurrentrepo;
-    property branches: TStringlist read Getbranches;
-    property currentBranch: string read getCurrentBranch write setCurrentBranch;
+    property branches: TStringList read Getbranches;
+    property currentBranch: string read fCurrentBranch write setCurrentBranch;
   end;
 
 implementation
@@ -81,11 +72,52 @@ begin
   fExclusions:=TStringlist.Create;
   fExclusions.Add('node_modules');
   fExclusions.Add('lib');
+  fCodeDirectory:='';
+  fCurrentRepoName:='';
+  fCurrentBranch:='';
   fCodeDirectoryChanged:=onCodeDirectoryChanged;
   fRepositoriesChanged:=onReposChanged;
   fCurrentRepoChanged:=onCurrentRepoChanged;
   fCurrentBranchChanged:=onCurrentBranchChanged;
-  loadConfig(openFileAsArray(configFilename,#$0A));
+  if (fileExists(configFileName)) then
+     loadConfig(openFileAsArray(configFilename,#$0A));
+end;
+
+procedure TGitWhat.loadConfig(lines: TStringArray);
+var
+  index:integer;
+  parts:TStringArray;
+begin
+  for index:= 0 to pred(length(lines)) do
+  begin
+    //split each line on ,
+    parts:=lines[index].Split(',');
+    if (length(parts)=3) then
+       addRepo(parts[0],TRepo.create(parts[1],Iso8601ToDate(parts[2])))
+    else
+      if (length(parts) = 2) then
+      begin
+      if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
+        else if (parts[0] = 'current_repo') then fCurrentRepoName := parts[1]
+      end;
+  end;
+end;
+
+procedure TGitWhat.saveConfig(configFileName: String);
+var
+  configArray:TStringArray;
+  fileContents:string;
+  index:integer;
+begin
+  fileContents:='';
+  configArray:= toStringArray; //need config to xmlDocument method as well
+  for index:=0 to pred(length(configArray)) do
+    begin
+    fileContents:=fileContents+configArray[index];
+    if (index < pred(length(configArray))) then
+    fileContents:=fileContents+ #$0A;
+    end;
+  writeStream(configFileName, fileContents);
 end;
 
 procedure TGitWhat.rescanRepos;
@@ -101,19 +133,14 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
   index:integer;
   directoryName,repoName:string;
   repoNameParts:TStringArray;
-  branchFileNameParts:TStringArray;
   newRepo:TRepo;
-  fileModified,branchModified:longint;
-  branchFiles:TStringlist;
-  bFIndex:Integer;
+  fileModified:longint;
   begin
     chdir(codeDir);
     repoNameParts:=codeDir.Split('/');
     repoName:= repoNameParts[pred(length(repoNameParts))];
     if directoryExists('.git') then
       begin
-        //add to the list of repos and don't go any deeper
-        //new repos won't have the index file. Use config in this case
         if fileExists('.git/index') then fileModified:= FileAge('.git/index')
         else fileModified:= FileAge('.git/config');
         newRepo:=TRepo.create(codeDir,FileDateToDateTime(fileModified));
@@ -138,21 +165,6 @@ begin
       result.add(fRepositories.Keys[index]);
 end;
 
-function TGitWhat.executeCommand(repo, command: string): TStringlist;
-  begin
-  result:=TStringlist.Create;
-  chdir(repo);
-  if fProcess = nil then fProcess:=TProcess.Create(Nil);
-  if not directoryExists('.git') then exit;
-  fProcess.Parameters.Clear;
-  fProcess.Executable := '/bin/sh';
-  fProcess.Parameters.Add('-c');
-  fProcess.Parameters.Add(command);
-  fProcess.Options := fProcess.Options + [poWaitOnExit, poUsePipes, poStderrToOutPut];
-  fProcess.Execute;
-  result.LoadFromStream(fProcess.Output);
-  end;
-
 function TGitWhat.toStringArray: TStringArray;
 var
   configLength,index:integer;
@@ -166,33 +178,6 @@ begin
     begin
       result[index+2]:=fRepositories.Keys[index]+','+(fRepositories.Data[index]).path+','+DateToISO8601((fRepositories.Data[index]).lastUsed);
     end;
-end;
-
-procedure TGitWhat.saveConfig(configFileName: String);
-var
-  configArray:TStringArray;
-  fileContents:string;
-  index:integer;
-begin
-  fileContents:='';
-  configArray:= toStringArray; //need config to xmlDocument method as well
-  for index:=0 to pred(length(configArray)) do
-    begin
-    fileContents:=fileContents+configArray[index];
-    if (index < pred(length(configArray))) then
-    fileContents:=fileContents+ #$0A;
-    end;
-  writeStream(configFileName, fileContents);
-end;
-
-function TGitWhat.getCodeDirectory: string;
-begin
-  result:=fCodeDirectory;
-end;
-
-function TGitWhat.getCurrentRepoName: string;
-begin
-  result:= fCurrentRepoName;
 end;
 
 function TGitWhat.updateRepositories: integer;
@@ -235,26 +220,6 @@ begin
     end;
 end;
 
-procedure TGitWhat.loadConfig(lines: TStringArray);
-var
-  index:integer;
-  parts:TStringArray;
-begin
-  for index:= 0 to pred(length(lines)) do
-  begin
-    //split each line on ,
-    parts:=lines[index].Split(',');
-    if (length(parts)=3) then
-       addRepo(parts[0],TRepo.create(parts[1],Iso8601ToDate(parts[2])))
-    else
-      if (length(parts) = 2) then
-      begin
-      if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
-        else if (parts[0] = 'current_repo') then fCurrentRepoName := parts[1]
-      end;
-  end;
-end;
-
 procedure TGitWhat.clearNewRepos;
 begin
   fNewRepositories.Clear;
@@ -278,34 +243,46 @@ begin
   if (repoIndex > -1) then
      fRepositories.Delete(repoIndex);
 end;
+{ Actions that change state }
 
-procedure TGitWhat.setCodeDirectory(codeDirectory: string);
+procedure TGitWhat.setCodeDirectory(codeDirectory_: string);
 begin
-  if (directoryExists(codeDirectory)) and (fCodeDirectory <> codeDirectory) then
+  if (directoryExists(codeDirectory_)) and (fCodeDirectory <> codeDirectory_) then
   begin
-    fCodeDirectory:=codeDirectory;
+    chDir(codeDirectory_);
+    fCodeDirectory:=codeDirectory_;
+    rescanRepos;
     fCodeDirectoryChanged(self);
-  end;
-//else raise an error?
+  end else raise Exception.Create('Directory does not exist');
 end;
 
-procedure TGitWhat.setCurrentRepoName(currentRepoName_: string);
+procedure TGitWhat.setCurrentRepoName(repoName_: string);
+var
+  repoIndex:integer;
 begin
-  fCurrentRepoName:=currentRepoName_;
+  fRepositories.Find(repoName_, repoIndex);
+  if (repoIndex > 0) and (fCurrentRepoName <> repoName_) then
+    begin
+    chDir(fRepositories.Data[repoIndex].path);
+    fCurrentRepoName:=repoName_;
+    fCurrentRepoChanged(self);
+    end;
 end;
 
 procedure TGitWhat.setCurrentBranch(branchName_: string);
 var
-  currentBranches :TStringlist;
+  branchResponse :TGitResponse;
+  gitApi: TGitApi;
 begin
-  //first check if the branch still exists and if we're on it
-  currentBranches:=executeCommand(currentRepo.path, 'git branch --sort=-committerdate');
-  if (currentBranches.IndexOf(branchName_) > -1) then
+  gitApi:=TGitApi.create(currentRepo);
+  branchResponse:= gitApi.getBranches;
+  if branchResponse.success then
     begin
-     executeCommand(currentRepo.path, 'git checkout '+branchName_.Substring(1));
-     fCurrentBranchChanged(self);
-    end;
+      if (branchResponse.results.IndexOf(branchName_) > -1)
+         then fCurrentBranchChanged(gitApi.changeBranch(branchName_.Substring(1)));
+    end else fCurrentBranchChanged(branchResponse);
 end;
+{ Commands that don't change state }
 
 function TGitWhat.getCurrentRepo: TRepo;
 var
@@ -313,49 +290,20 @@ var
 begin
   result:=nil;
   fRepositories.Find(fCurrentRepoName, currentRepoIndex);
-  if (currentRepoIndex > - 1) then result:= fRepositories.Data[currentRepoIndex];
+  if (currentRepoIndex > 0) then result:= fRepositories.Data[currentRepoIndex];
 end;
 
 function TGitWhat.getBranches: TStringlist;
-begin
-  result:=executeCommand(currentRepo.path, 'git branch --sort=-committerdate');
-end;
-
-function TGitWhat.getCurrentBranch: string;
 var
-  branchList:TStringlist;
-  index:integer;
+  gitApi: TGitApi;
+  branchResponse:TgitResponse;
 begin
-  branchList:=executeCommand(currentRepo.path, 'git branch --sort=-committerdate');
-  for index:=0 to pred(branchList.Count) do
-    if branchList[index].Substring(0,1) = '*' then
-      begin
-      result:=branchList[index];
-      exit;
-      end;
+  gitApi:=TGitApi.create(currentRepo);
+  branchResponse:=gitApi.getBranches;
+  if branchResponse.success
+     then result:= branchResponse.results
+     else result:= TStringlist.Create;
 end;
-
-procedure TGitWhat.directoryChanged(sender: TObject);
-begin
-  fCodeDirectoryChanged(self);
-end;
-
-procedure TGitWhat.repoListChanged(sender: TObject);
-begin
-  fRepositoriesChanged(self);
-end;
-
-procedure TGitWhat.currentRepoChanged(sender: TObject);
-begin
-  fCurrentRepoChanged(self);
-end;
-
-procedure TGitWhat.currentBranchChanged(sender: TObject);
-begin
-  fcurrentBranchChanged(self);
-end;
-
-
 
 end.
 
