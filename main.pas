@@ -108,8 +108,6 @@ if (cbCurrentRepo.ItemIndex > -1)
 end;
 
 procedure TForm1.onCurrentRepoChanged(sender: TObject);
-var
-  branchIndex:integer;
 begin
   cbCurrentBranch.Items:=fGitWhat.branches;
   cbCurrentBranch.ItemIndex:= getCurrentBranchIndex(cbCurrentBranch.Items);
@@ -120,7 +118,16 @@ begin
   //sender here will be a TGitResponse containing the result of the operation
   if sender is TGitResponse then with sender as TGitResponse do
     begin
-    if success then listbox1.Items.Add(results[0]);
+    if success then
+      begin
+      onCurrentRepoChanged(self);
+      listbox1.Items.Add(results[0]);
+      end
+    else
+      begin
+      messagedlg('','Couldn''t switch branch. Response was: '+errors[0],mtError,[mbOK],0);
+      cbCurrentBranch.ItemIndex:=getCurrentBranchIndex(cbCurrentBranch.Items);
+      end;
     end;
 end;
 

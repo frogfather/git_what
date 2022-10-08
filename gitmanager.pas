@@ -273,12 +273,15 @@ procedure TGitWhat.setCurrentBranch(branchName_: string);
 var
   branchResponse :TGitResponse;
   gitApi: TGitApi;
+  branchIndex:integer;
 begin
   gitApi:=TGitApi.create(currentRepo);
   branchResponse:= gitApi.getBranches;
   if branchResponse.success then
     begin
-      if (branchResponse.results.IndexOf(branchName_) > -1)
+      branchIndex:=branchResponse.results.IndexOf(branchName_);
+      if (branchIndex > -1)
+      and (branchResponse.results[branchIndex].Substring(0,1) <> '*')
          then fCurrentBranchChanged(gitApi.changeBranch(branchName_.Substring(1)));
     end else fCurrentBranchChanged(branchResponse);
 end;
