@@ -36,6 +36,7 @@ type
     procedure doRescanRepos(codeDir: String);
     function getCurrentRepo:TRepo;
     function getBranches:TStringlist;
+    function onCurrentBranch(branch:string):Boolean;
     function toStringArray:TStringArray;
     property exclusions: TStringlist read fExclusions;
     public
@@ -271,19 +272,32 @@ end;
 
 procedure TGitWhat.setCurrentBranch(branchName_: string);
 var
-  branchResponse :TGitResponse;
+  branchResponse,changeResponse :TGitResponse;
   gitApi: TGitApi;
   branchIndex:integer;
 begin
   gitApi:=TGitApi.create(currentRepo);
   branchResponse:= gitApi.getBranches;
-  if branchResponse.success then
+  if not branchResponse.success then
+     begin
+     fCurrentBranchChanged(branchResponse);
+     exit;
+     end;
+  branchIndex:=branchResponse.results.IndexOf(branchName_);
+  if (branchIndex > -1) then
     begin
-      branchIndex:=branchResponse.results.IndexOf(branchName_);
-      if (branchIndex > -1)
-      and (branchResponse.results[branchIndex].Substring(0,1) <> '*')
-         then fCurrentBranchChanged(gitApi.changeBranch(branchName_.Substring(1)));
-    end else fCurrentBranchChanged(branchResponse);
+    //try to change the branch
+    if not onCurrentBranch(branchResponse.results[branchIndex]) then
+      begin
+      changeResponse:=gitApi.changeBranch(branchName_.Substring(1));
+      if not changeResponse.success then
+        begin
+        fCurrentBranchChanged(changeResponse);
+        exit;
+        end;
+      end;
+    fCurrentBranchChanged(gitApi.logWithDecoration);
+    end;
 end;
 { Commands that don't change state }
 
@@ -306,6 +320,11 @@ begin
   if branchResponse.success
      then result:= branchResponse.results
      else result:= TStringlist.Create;
+end;
+
+function TGitWhat.onCurrentBranch(branch: string): Boolean;
+begin
+  result:= branch.Substring(0,1) = '*';
 end;
 
 end.

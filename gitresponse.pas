@@ -48,6 +48,7 @@ constructor TGitResponse.create(commandResult: TStringlist);
 begin
   if (commandResult.Count > 0) then
     begin
+      //TODO - only look for error at start of response
       if (commandResult[0].IndexOf('error') > -1) then
         begin
           fErrors:=commandResult;

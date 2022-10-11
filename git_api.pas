@@ -24,6 +24,7 @@ type
     constructor create(repo_:TRepo);
     function getBranches:TGitResponse;
     function changeBranch(branchName:string):TGitResponse;
+    function logWithDecoration:TGitResponse;
   end;
 
 implementation
@@ -79,6 +80,13 @@ begin
   resetParams;
   params.Add('git checkout '+branchName);
   result:= TGitResponse.Create(executeCommand);
+end;
+
+function TGitApi.logWithDecoration: TGitResponse;
+begin
+  resetParams;
+  params.Add('git log --graph --oneline --decorate');
+  result:=TGitResponse.create(executeCommand);
 end;
 
 
