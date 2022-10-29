@@ -14,12 +14,14 @@ type
     private
     fpath:string;
     flastUsed:TDateTime;
+    fPivotalProject: integer;
     procedure setLastUsed(lastUsed_:TDateTime);
     procedure setPath(path_:string);
     public
     constructor create(path_:string;lastUsed_:TDateTime);
     property path: string read fPath write setPath;
     property lastUsed: TDateTime read fLastUsed write setLastUsed;
+    property pivotalProject: integer read fPivotalProject write fPivotalProject;
   end;
 
 implementation
