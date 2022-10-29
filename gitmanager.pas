@@ -5,7 +5,8 @@ unit gitManager;
 interface
 
 uses
-  Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,git_api,gitResponse;
+  Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,xml_doc_handler,
+  git_api,gitResponse;
 type
   
   { TGitWhat }
@@ -37,7 +38,6 @@ type
     function getCurrentRepo:TRepo;
     function getBranches:TStringlist;
     function onCurrentBranch(branch:string):Boolean;
-    function toStringArray:TStringArray;
     property exclusions: TStringlist read fExclusions;
     public
     constructor create(
@@ -106,20 +106,9 @@ begin
 end;
 
 procedure TGitWhat.saveConfig(configFileName: String);
-var
-  configArray:TStringArray;
-  fileContents:string;
-  index:integer;
 begin
-  fileContents:='';
-  configArray:= toStringArray; //need config to xmlDocument method as well
-  for index:=0 to pred(length(configArray)) do
-    begin
-    fileContents:=fileContents+configArray[index];
-    if (index < pred(length(configArray))) then
-    fileContents:=fileContents+ #$0A;
-    end;
-  writeStream(configFileName, fileContents);
+  //rewrite to use xml file
+
 end;
 
 procedure TGitWhat.rescanRepos;
@@ -165,21 +154,6 @@ begin
   result:=TStringlist.Create;
   for index:= 0 to pred(fRepositories.Count) do
       result.add(fRepositories.Keys[index]);
-end;
-
-function TGitWhat.toStringArray: TStringArray;
-var
-  configLength,index:integer;
-begin
-  result:= TStringArray.create;
-  configLength:=fRepositories.Count + 2;
-  setLength(Result, configLength);
-  result[0]:='code_directory,'+fCodeDirectory;
-  result[1]:='current_repo,'+fCurrentRepoName;
-  for index:= 0 to pred(fRepositories.Count) do
-    begin
-      result[index+2]:=fRepositories.Keys[index]+','+(fRepositories.Data[index]).path+','+DateToISO8601((fRepositories.Data[index]).lastUsed);
-    end;
 end;
 
 function TGitWhat.updateRepositories: integer;
