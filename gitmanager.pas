@@ -89,6 +89,7 @@ var
   index:integer;
   parts:TStringArray;
 begin
+  //Needs rewritten to use XML file
   for index:= 0 to pred(length(lines)) do
   begin
     //split each line on ,
