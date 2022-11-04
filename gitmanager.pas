@@ -25,6 +25,7 @@ type
     fCurrentBranchChanged:TNotifyEvent;
     function updateRepositories:integer;
     function repoMissingOrUpdated(repoName: string; repo_: TRepo): boolean;
+    function getRepoName(path:string):string;
     procedure clearNewRepos;
     procedure addNewRepo(repoName: string; repo:TRepo);
     procedure addRepo(repoName: string; repo_: TRepo);
@@ -93,13 +94,11 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
   directoryList:TStringlist;
   index:integer;
   directoryName,repoName:string;
-  repoNameParts:TStringArray;
   newRepo:TRepo;
   fileModified:longint;
   begin
     chdir(codeDir);
-    repoNameParts:=codeDir.Split('/');
-    repoName:= repoNameParts[pred(length(repoNameParts))];
+    repoName:= getRepoName(codeDir);
     if directoryExists('.git') then
       begin
         if fileExists('.git/index') then fileModified:= FileAge('.git/index')
@@ -118,21 +117,59 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
   end;
 
 procedure TGitWhat.toXML;
+var
+  index:integer;
+  rootNode,reposNode,repoNode:TDOMNode;
+  attributes:TStringArray;
 begin
   //create an xml document based on the gitManager class
+  setLength(attributes,2);
+  attributes[0]:='name';
   with xmlDocumentHandler do
     begin
-    addSection('code-directory','git-what',codeDirectory);
-    addSection('current-repo','git-what',currentRepoName);
-    addSection('repos','git-what');
+    initializeDoc;
+    addNode('','code-directory',codeDirectory);
+    addNode('','current-repo',currentRepoName);
+    reposNode:=addNode('','repos');
+    for index:= 0 to pred(fRepositories.Count) do
+      begin
+      attributes[1]:=fRepositories.Keys[index];
+      repoNode:=createNode('repo','',attributes);
+      repoNode.AppendChild(createNode('path',fRepositories.Data[index].path));
+      repoNode.AppendChild(createNode('pivotal-project',fRepositories.Data[index].pivotalProject.ToString));
+      repoNode.AppendChild(createNode('current-branch',fRepositories.Data[index].currentBranch));
+      repoNode.AppendChild(createNode('last-used',DateToISO8601(fRepositories.Data[index].lastUsed)));
+      reposNode.AppendChild(repoNode);
+      end;
     end;
 end;
 
 procedure TGitWhat.fromXML;
+var
+  reposNode,childNode:TDOMNode;
+  repoEnumerator:TDomNodeEnumerator;
+  repoPath,repoCurrentBranch:string;
+  repoPivotal:integer;
+  repoLastUsed:TDateTime;
 begin
-  //set the values of the gitManager based on the xml data
   codeDirectory:= xmlDocumentHandler.getNodeTextValue('code-directory');
   currentRepoName:= xmlDocumentHandler.getNodeTextValue('current-repo');
+  //for repos we want to set the path, last used, pivotal project and current branch
+  reposNode:= xmlDocumentHandler.getNode('repos');
+  if (reposNode <> Nil) and (reposNode.GetChildCount > 0) then
+    begin
+    repoEnumerator:= reposNode.GetEnumerator;
+    while repoEnumerator.MoveNext do
+      begin
+      childNode:=repoEnumerator.Current;
+      //create a repo from this
+      repoPath:=childNode.ChildNodes.Item[0].TextContent;
+      repoPivotal:=childNode.ChildNodes.Item[1].TextContent.ToInteger;
+      repoCurrentBranch:=childNode.ChildNodes.Item[2].TextContent;
+      repoLastUsed:= ISO8601ToDate(childNode.ChildNodes.Item[3].TextContent);
+      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoPivotal,repoCurrentBranch))
+      end;
+    end;
 end;
 
 function TGitWhat.getRepoNames: TStringlist;
@@ -200,6 +237,14 @@ begin
     end;
 end;
 
+function TGitWhat.getRepoName(path: string): string;
+var
+  repoNameParts:TStringArray;
+begin
+  repoNameParts:=path.Split('/');
+  result:= repoNameParts[pred(length(repoNameParts))];
+end;
+
 procedure TGitWhat.clearNewRepos;
 begin
   fNewRepositories.Clear;
@@ -233,7 +278,7 @@ begin
     fCodeDirectory:=codeDirectory_;
     rescanRepos;
     fCodeDirectoryChanged(self);
-  end else raise Exception.Create('Directory does not exist');
+  end;
 end;
 
 procedure TGitWhat.setCurrentRepoName(repoName_: string);
