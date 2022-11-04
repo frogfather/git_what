@@ -15,6 +15,7 @@ type
     fpath:string;
     flastUsed:TDateTime;
     fPivotalProject: integer;
+    fCurrentBranch: string;
     procedure setLastUsed(lastUsed_:TDateTime);
     procedure setPath(path_:string);
     procedure setPivotalProject(projectId:integer);
@@ -23,6 +24,7 @@ type
     property path: string read fPath write setPath;
     property lastUsed: TDateTime read fLastUsed write setLastUsed;
     property pivotalProject: integer read fPivotalProject write setPivotalProject;
+    property currentBranch: string read fCurrentBranch write fCurrentBranch;
   end;
 
 implementation

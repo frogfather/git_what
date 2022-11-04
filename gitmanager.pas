@@ -5,17 +5,17 @@ unit gitManager;
 interface
 
 uses
-  Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,xml_doc_handler,
-  git_api,gitResponse;
+  Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,
+  git_api,gitResponse,xml_doc_handler;
 type
   
   { TGitWhat }
 
   TGitWhat = class(TInterfacedObject)
     private
+    fXMLDocumentHandler:TXMLDocumentHandler;
     fCodeDirectory:String;
     fCurrentRepoName:string;
-    fCurrentBranch: string;
     fNewRepositories: specialize TFPGMap<string,TRepo>;
     fRepositories: specialize TFPGMap<string,TRepo>;
     fExclusions:TStringlist;
@@ -25,7 +25,6 @@ type
     fCurrentBranchChanged:TNotifyEvent;
     function updateRepositories:integer;
     function repoMissingOrUpdated(repoName: string; repo_: TRepo): boolean;
-    procedure loadConfig(lines: TStringArray);
     procedure clearNewRepos;
     procedure addNewRepo(repoName: string; repo:TRepo);
     procedure addRepo(repoName: string; repo_: TRepo);
@@ -35,24 +34,26 @@ type
     procedure setCurrentBranch(branchName_: string);
     procedure rescanRepos;
     procedure doRescanRepos(codeDir: String);
+    procedure toXML;
+    procedure fromXML;
     function getCurrentRepo:TRepo;
     function getBranches:TStringlist;
     function onCurrentBranch(branch:string):Boolean;
     property exclusions: TStringlist read fExclusions;
+    property xmlDocumentHandler:TXMLDocumentHandler read fXMLDocumentHandler;
     public
     constructor create(
-      configFilename:string;
       onCodeDirectoryChanged,
       onReposChanged,
       onCurrentRepoChanged,
       onCurrentBranchChanged:TNotifyEvent);
     function getRepoNames:TStringlist;
-    procedure saveConfig(configFileName: String);
+    function saveToFile(fileName:string):boolean;
+    function loadFromFile(fileName:string):boolean;
     property codeDirectory: string read fCodeDirectory write setCodeDirectory;
     property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
     property currentrepo: TRepo read getCurrentrepo;
     property branches: TStringList read Getbranches;
-    property currentBranch: string read fCurrentBranch write setCurrentBranch;
   end;
 
 implementation
@@ -60,7 +61,6 @@ implementation
 { TGitWhat }
 
 constructor TGitWhat.create(
-  configFilename:string;
   onCodeDirectoryChanged,
   onReposChanged,
   onCurrentRepoChanged,
@@ -73,42 +73,12 @@ begin
   fExclusions:=TStringlist.Create;
   fExclusions.Add('node_modules');
   fExclusions.Add('lib');
-  fCodeDirectory:='';
   fCurrentRepoName:='';
-  fCurrentBranch:='';
   fCodeDirectoryChanged:=onCodeDirectoryChanged;
   fRepositoriesChanged:=onReposChanged;
   fCurrentRepoChanged:=onCurrentRepoChanged;
   fCurrentBranchChanged:=onCurrentBranchChanged;
-  if (fileExists(configFileName)) then
-     loadConfig(openFileAsArray(configFilename,#$0A));
-end;
-
-procedure TGitWhat.loadConfig(lines: TStringArray);
-var
-  index:integer;
-  parts:TStringArray;
-begin
-  //Needs rewritten to use XML file
-  for index:= 0 to pred(length(lines)) do
-  begin
-    //split each line on ,
-    parts:=lines[index].Split(',');
-    if (length(parts)=3) then
-       addRepo(parts[0],TRepo.create(parts[1],Iso8601ToDate(parts[2])))
-    else
-      if (length(parts) = 2) then
-      begin
-      if (parts[0] = 'code_directory') then fCodeDirectory := parts[1]
-        else if (parts[0] = 'current_repo') then fCurrentRepoName := parts[1]
-      end;
-  end;
-end;
-
-procedure TGitWhat.saveConfig(configFileName: String);
-begin
-  //rewrite to use xml file
-
+  fXMLDocumentHandler:=TXMLDocumentHandler.create;
 end;
 
 procedure TGitWhat.rescanRepos;
@@ -147,6 +117,24 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
       end;
   end;
 
+procedure TGitWhat.toXML;
+begin
+  //create an xml document based on the gitManager class
+  with xmlDocumentHandler do
+    begin
+    addSection('code-directory','git-what',codeDirectory);
+    addSection('current-repo','git-what',currentRepoName);
+    addSection('repos','git-what');
+    end;
+end;
+
+procedure TGitWhat.fromXML;
+begin
+  //set the values of the gitManager based on the xml data
+  codeDirectory:= xmlDocumentHandler.getValue('code-directory');
+  currentRepoName:= xmlDocumentHandler.getValue('current-repo');
+end;
+
 function TGitWhat.getRepoNames: TStringlist;
 var
   index:integer;
@@ -154,6 +142,22 @@ begin
   result:=TStringlist.Create;
   for index:= 0 to pred(fRepositories.Count) do
       result.add(fRepositories.Keys[index]);
+end;
+
+function TGitWhat.saveToFile(fileName: string): boolean;
+begin
+  //use the document handler to create the document
+  //then call save on it
+  toXML;
+  xmlDocumentHandler.save(fileName);
+  result:=true;
+end;
+
+function TGitWhat.loadFromFile(fileName: string): boolean;
+begin
+  xmlDocumentHandler.load(fileName);
+  fromXML;
+  result:=true;
 end;
 
 function TGitWhat.updateRepositories: integer;

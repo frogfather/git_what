@@ -60,7 +60,8 @@ implementation
 
 procedure TForm1.cbCurrentBranchSelect(Sender: TObject);
 begin
-  fGitWhat.currentBranch:=cbCurrentBranch.Text;
+  if fGitWhat.currentrepo = nil then exit;
+  fGitWhat.currentRepo.currentBranch:=cbCurrentBranch.Text;
 end;
 
 procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
@@ -78,7 +79,7 @@ end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
-  fGitWhat.saveConfig(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
+  fGitWhat.saveToFile(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
 end;
 
 
@@ -89,11 +90,11 @@ begin
   gitBranchView.Highlighter:= fHighlighter;
   //Create the git manager and its config
   fGitWhat:=TGitWhat.create(
-    getUsrDir('cloudsoft')+'/.gitwhat.cfg',
     @onCodeDirectoryChanged,
     @onReposChanged,
     @onCurrentRepoChanged,
     @onCurrentBranchChanged);
+  fGitWhat.loadFromFile(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
   eCodeDirectory.Text:=fGitWhat.codeDirectory;
   cbCurrentRepo.Items:= fGitWhat.getRepoNames;
   cbCurrentRepo.ItemIndex:=cbCurrentRepo.items.indexOf(fGitWhat.currentRepoName);
