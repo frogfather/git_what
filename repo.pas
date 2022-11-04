@@ -20,7 +20,7 @@ type
     procedure setPath(path_:string);
     procedure setPivotalProject(projectId:integer);
     public
-    constructor create(path_:string;lastUsed_:TDateTime);
+    constructor create(path_:string; lastUsed_:TDateTime; pivotalProject_:integer = -1; currentBranch_:string='');
     property path: string read fPath write setPath;
     property lastUsed: TDateTime read fLastUsed write setLastUsed;
     property pivotalProject: integer read fPivotalProject write setPivotalProject;
@@ -46,10 +46,12 @@ begin
   fPivotalProject := projectId;
 end;
 
-constructor TRepo.create(path_: string; lastUsed_: TDateTime);
+constructor TRepo.create(path_:string; lastUsed_:TDateTime; pivotalProject_:integer; currentBranch_:string);
 begin
   fPath:=path_;
   fLastUsed:=lastUsed_;
+  fPivotalProject:=pivotalProject_;
+  fCurrentBranch:=currentBranch_;
 end;
 
 end.

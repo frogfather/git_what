@@ -52,10 +52,6 @@
         <UnitName Value="fileUtilities"/>
       </Unit>
       <Unit>
-        <Filename Value="../fpc_common/xml_doc_handler.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="config_xml_doc_handler.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -81,6 +77,10 @@
         <Filename Value="gitresponse.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="gitResponse"/>
+      </Unit>
+      <Unit>
+        <Filename Value="xml_doc_handler.pas"/>
+        <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
   </ProjectOptions>
