@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,
-  git_api,gitResponse,xml_doc_handler;
+  git_api,gitResponse,xml_doc_handler,laz2_DOM;
 type
   
   { TGitWhat }
