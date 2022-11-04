@@ -131,8 +131,8 @@ end;
 procedure TGitWhat.fromXML;
 begin
   //set the values of the gitManager based on the xml data
-  codeDirectory:= xmlDocumentHandler.getValue('code-directory');
-  currentRepoName:= xmlDocumentHandler.getValue('current-repo');
+  codeDirectory:= xmlDocumentHandler.getNodeTextValue('code-directory');
+  currentRepoName:= xmlDocumentHandler.getNodeTextValue('current-repo');
 end;
 
 function TGitWhat.getRepoNames: TStringlist;
