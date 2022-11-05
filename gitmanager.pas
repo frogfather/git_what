@@ -154,7 +154,7 @@ var
 begin
   codeDirectory:= xmlDocumentHandler.getNodeTextValue('code-directory');
   currentRepoName:= xmlDocumentHandler.getNodeTextValue('current-repo');
-  //for repos we want to set the path, last used, pivotal project and current branch
+  //TODO there are probably build in methods on TXMLDocument that do this better
   reposNode:= xmlDocumentHandler.getNode('repos');
   if (reposNode <> Nil) and (reposNode.GetChildCount > 0) then
     begin

@@ -10,6 +10,7 @@ type
   
   { TRepo }
 
+  //represents a git repository
   TRepo = class(TinterfacedObject)
     private
     fpath:string;
