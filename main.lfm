@@ -1,21 +1,21 @@
 object Form1: TForm1
-  Left = 240
-  Height = 559
-  Top = 170
-  Width = 1113
+  Left = 304
+  Height = 567
+  Top = 25
+  Width = 1117
   Caption = 'Main'
-  ClientHeight = 559
-  ClientWidth = 1113
+  ClientHeight = 567
+  ClientWidth = 1117
   OnDestroy = FormDestroy
   OnShow = FormShow
   LCLVersion = '2.2.2.0'
   object pDirectory: TPanel
     Left = 0
-    Height = 467
+    Height = 475
     Top = 0
     Width = 204
     Align = alLeft
-    ClientHeight = 467
+    ClientHeight = 475
     ClientWidth = 204
     TabOrder = 0
     object cbCurrentRepo: TComboBox
@@ -61,7 +61,7 @@ object Form1: TForm1
     object cbCurrentBranch: TComboBox
       Left = 32
       Height = 20
-      Top = 124
+      Top = 170
       Width = 160
       Anchors = [akTop, akLeft, akRight]
       ItemHeight = 19
@@ -71,32 +71,62 @@ object Form1: TForm1
     object lCurrentBranch: TLabel
       Left = 40
       Height = 16
-      Top = 106
+      Top = 152
       Width = 89
       Caption = 'CurrentBranch'
+      ParentColor = False
+    end
+    object ePivotal: TEdit
+      Left = 32
+      Height = 22
+      Top = 122
+      Width = 160
+      TabOrder = 3
+    end
+    object lProject: TLabel
+      Left = 40
+      Height = 16
+      Top = 104
+      Width = 43
+      Caption = 'Project'
+      ParentColor = False
+    end
+    object eStory: TEdit
+      Left = 32
+      Height = 22
+      Top = 224
+      Width = 160
+      TabOrder = 4
+    end
+    object lStory: TLabel
+      Left = 40
+      Height = 16
+      Top = 203
+      Width = 32
+      Caption = 'Story'
       ParentColor = False
     end
   end
   object spMain: TSplitter
     Left = 204
-    Height = 467
+    Height = 475
     Top = 0
     Width = 4
   end
   object pTree: TPanel
     Left = 208
-    Height = 467
+    Height = 475
     Top = 0
-    Width = 905
+    Width = 909
     Align = alClient
-    ClientHeight = 467
-    ClientWidth = 905
+    ClientHeight = 475
+    ClientWidth = 909
     TabOrder = 2
     inline gitBranchView: TSynEdit
       Left = 8
       Height = 424
       Top = 32
-      Width = 881
+      Width = 885
       Anchors = [akTop, akLeft, akRight]
       Font.Height = -13
       Font.Name = 'Verdana'
@@ -605,11 +635,11 @@ object Form1: TForm1
   object pLog: TPanel
     Left = 0
     Height = 87
-    Top = 472
-    Width = 1113
+    Top = 480
+    Width = 1117
     Align = alBottom
     ClientHeight = 87
-    ClientWidth = 1113
+    ClientWidth = 1117
     Constraints.MaxHeight = 200
     Constraints.MinHeight = 20
     TabOrder = 3
@@ -617,7 +647,7 @@ object Form1: TForm1
       Left = 5
       Height = 77
       Top = 5
-      Width = 1103
+      Width = 1107
       Align = alClient
       BorderSpacing.Around = 4
       ItemHeight = 0
@@ -628,8 +658,8 @@ object Form1: TForm1
     Cursor = crVSplit
     Left = 0
     Height = 5
-    Top = 467
-    Width = 1113
+    Top = 475
+    Width = 1117
     Align = alBottom
     ResizeAnchor = akBottom
   end

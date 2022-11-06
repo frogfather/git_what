@@ -17,6 +17,10 @@ type
     cbCurrentRepo: TComboBox;
     cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
+    eStory: TEdit;
+    ePivotal: TEdit;
+    lProject: TLabel;
+    lStory: TLabel;
     lCurrentBranch: TLabel;
     lCurrentRepo: TLabel;
     lCodeDirectory: TLabel;
