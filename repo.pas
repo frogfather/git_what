@@ -21,11 +21,11 @@ type
     procedure setLastUsed(lastUsed_:TDateTime);
     procedure setPath(path_:string);
     procedure setPivotalProject(projectId:integer);
-    procedure setCurrentBranch(branchName:string);
     procedure addBranch(branch_:TBranch);
     procedure removeBranch(branchName_:string);
     public
     constructor create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch = nil; pivotalProject_:integer = -1);
+    procedure setCurrentBranch(branchName:string);
     property path: string read fPath write setPath;
     property lastUsed: TDateTime read fLastUsed write setLastUsed;
     property pivotalProject: integer read fPivotalProject write setPivotalProject;
@@ -60,12 +60,13 @@ begin
     fCurrentBranch:= foundBranch
   else
     fCurrentBranch:=TBranch.create(branchName);
-    fBranches.push(fCurrentBranch);
+    addBranch(fCurrentBranch);
 end;
 
 procedure TRepo.addBranch(branch_: TBranch);
 begin
-
+  if (fBranches.findByName(branch_.name)) = Nil
+    then fBranches.push(branch_);
 end;
 
 procedure TRepo.removeBranch(branchName_: string);

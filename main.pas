@@ -64,8 +64,8 @@ implementation
 
 procedure TForm1.cbCurrentBranchSelect(Sender: TObject);
 begin
-  if fGitWhat.currentrepo = nil then exit;
-  //fGitWhat.currentRepo.currentBranch:=cbCurrentBranch.Text;
+  if (fGitWhat.currentrepo = nil) or (cbCurrentBranch.Text = '') then exit;
+  fGitWhat.currentRepo.setCurrentBranch(cbCurrentBranch.Text);
 end;
 
 procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
