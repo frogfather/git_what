@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,
-  git_api,gitResponse,xml_doc_handler,laz2_DOM;
+  git_api,gitResponse,xml_doc_handler,laz2_DOM,branch;
 type
   
   { TGitWhat }
@@ -119,7 +119,7 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
 procedure TGitWhat.toXML;
 var
   index:integer;
-  rootNode,reposNode,repoNode:TDOMNode;
+  rootNode,reposNode,repoNode,branchNode:TDOMNode;
   attributes:TStringArray;
 begin
   //create an xml document based on the gitManager class
@@ -137,7 +137,9 @@ begin
       repoNode:=createNode('repo','',attributes);
       repoNode.AppendChild(createNode('path',fRepositories.Data[index].path));
       repoNode.AppendChild(createNode('pivotal-project',fRepositories.Data[index].pivotalProject.ToString));
-      repoNode.AppendChild(createNode('current-branch',fRepositories.Data[index].currentBranch));
+      branchNode:=createNode('branch','');
+      branchNode.AppendChild(createNode('branch-name',fRepositories.Data[index].currentBranch.name));
+      repoNode.AppendChild(branchNode);
       repoNode.AppendChild(createNode('last-used',DateToISO8601(fRepositories.Data[index].lastUsed)));
       reposNode.AppendChild(repoNode);
       end;
@@ -146,11 +148,12 @@ end;
 
 procedure TGitWhat.fromXML;
 var
-  reposNode,childNode:TDOMNode;
+  reposNode,childNode,repoCurrentBranchNode:TDOMNode;
   repoEnumerator:TDomNodeEnumerator;
-  repoPath,repoCurrentBranch:string;
+  repoPath:string;
   repoPivotal:integer;
   repoLastUsed:TDateTime;
+  repoCurrentBranch:TBranch;
 begin
   codeDirectory:= xmlDocumentHandler.getNodeTextValue('code-directory');
   currentRepoName:= xmlDocumentHandler.getNodeTextValue('current-repo');
@@ -165,9 +168,16 @@ begin
       //create a repo from this
       repoPath:=childNode.ChildNodes.Item[0].TextContent;
       repoPivotal:=childNode.ChildNodes.Item[1].TextContent.ToInteger;
-      repoCurrentBranch:=childNode.ChildNodes.Item[2].TextContent;
+      repoCurrentBranchNode:=childNode.ChildNodes.Item[2];
       repoLastUsed:= ISO8601ToDate(childNode.ChildNodes.Item[3].TextContent);
-      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoPivotal,repoCurrentBranch))
+      if (repoCurrentBranchNode.GetChildCount = 3) then
+        begin
+        repoCurrentBranch:=TBranch.Create(
+          repoCurrentBranchNode.ChildNodes[0].TextContent,
+          repoCurrentBranchNode.ChildNodes[1].TextContent,
+          repoCurrentBranchNode.ChildNodes[2].TextContent.ToInteger);
+        end;
+      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch,repoPivotal))
       end;
     end;
 end;

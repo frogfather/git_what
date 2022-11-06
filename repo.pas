@@ -5,7 +5,7 @@ unit repo;
 interface
 
 uses
-  Classes, SysUtils,arrayUtils;
+  Classes, SysUtils,arrayUtils,branch;
 type
   
   { TRepo }
@@ -16,16 +16,20 @@ type
     fpath:string;
     flastUsed:TDateTime;
     fPivotalProject: integer;
-    fCurrentBranch: string;
+    fBranches: TBranches;
+    fCurrentBranch: TBranch;
     procedure setLastUsed(lastUsed_:TDateTime);
     procedure setPath(path_:string);
     procedure setPivotalProject(projectId:integer);
+    procedure setCurrentBranch(branchName:string);
+    procedure addBranch(branch_:TBranch);
+    procedure removeBranch(branchName_:string);
     public
-    constructor create(path_:string; lastUsed_:TDateTime; pivotalProject_:integer = -1; currentBranch_:string='');
+    constructor create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch = nil; pivotalProject_:integer = -1);
     property path: string read fPath write setPath;
     property lastUsed: TDateTime read fLastUsed write setLastUsed;
     property pivotalProject: integer read fPivotalProject write setPivotalProject;
-    property currentBranch: string read fCurrentBranch write fCurrentBranch;
+    property currentBranch: TBranch read fCurrentBranch;
   end;
 
 implementation
@@ -47,7 +51,29 @@ begin
   fPivotalProject := projectId;
 end;
 
-constructor TRepo.create(path_:string; lastUsed_:TDateTime; pivotalProject_:integer; currentBranch_:string);
+procedure TRepo.setCurrentBranch(branchName: string);
+var
+  foundBranch:TBranch;
+begin
+  foundBranch:= fBranches.findByName(branchName);
+  if foundBranch <> nil then
+    fCurrentBranch:= foundBranch
+  else
+    fCurrentBranch:=TBranch.create(branchName);
+    fBranches.push(fCurrentBranch);
+end;
+
+procedure TRepo.addBranch(branch_: TBranch);
+begin
+
+end;
+
+procedure TRepo.removeBranch(branchName_: string);
+begin
+
+end;
+
+constructor TRepo.create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch; pivotalProject_:integer);
 begin
   fPath:=path_;
   fLastUsed:=lastUsed_;

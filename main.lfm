@@ -94,14 +94,14 @@ object Form1: TForm1
     object eStory: TEdit
       Left = 32
       Height = 22
-      Top = 224
+      Top = 221
       Width = 160
       TabOrder = 4
     end
     object lStory: TLabel
       Left = 40
       Height = 16
-      Top = 203
+      Top = 200
       Width = 32
       Caption = 'Story'
       ParentColor = False

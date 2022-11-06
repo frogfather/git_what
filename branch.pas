@@ -3,69 +3,89 @@ unit branch;
 {$mode ObjFPC}{$H+}
 {$MODESWITCH ADVANCEDRECORDS}
 {$modeswitch TypeHelpers}
+
 interface
 
 uses
   Classes, SysUtils;
 type
-  TBranch = record
-    branch_name:String;
-    branch_lastModified: TDateTime;
+
+  { TBranch }
+
+  TBranch = class(TInterfacedObject)
+    private
+    fName: string;
+    fStory: integer;
+    fStoryName: string;
+    public
+    constructor create(name_:string; storyName_:string = ''; story_: integer = -1);
+    property name: string read fName write fName;
   end;
-  TBranches = specialize Tarray<TBranch>;
+
+  { TBranches }
+  TBranches = array of TBranch;
 
   { TBranchHelper }
-  TBranchHelper = type helper for TBranches
+
+  TBranchHelper = type Helper for TBranches
   function size: integer;
-  function push(branch_:TBranch):integer;
-  function indexOf(branchName_: string):integer;
-  function delete(branchName_:string):integer;
+  function push(element:TBranch):integer;
+  function indexOf(element:TBranch):integer;
+  function findByName(elementName:string):TBranch;
   end;
 
 implementation
+
+generic function GetIndex<T>(aItem:T; aArr: specialize TArray<T>): SizeInt;
+begin
+  for Result := 0 to High(aArr) do
+    if aArr[Result] = aItem then
+      Exit;
+  Result := -1;
+end;
 
 { TBranchHelper }
 
 function TBranchHelper.size: integer;
 begin
-  result:= length(self);
+  result:=length(self);
 end;
 
-function TBranchHelper.push(branch_: TBranch): integer;
+function TBranchHelper.push(element: TBranch): integer;
 begin
-  if (self.indexOf(branch_.branch_name) = -1) then
-    insert(branch_,self,length(self));
+  insert(element,self,length(self));
   result:=self.size;
 end;
 
-function TBranchHelper.indexOf(branchName_: string): integer;
-var
-  index:integer;
+function TBranchHelper.indexOf(element: TBranch): integer;
 begin
-  result:=-1;
-  for index:=0 to pred(self.size) do
+  result:= specialize getIndex<TBranch>(element,self);
+end;
+
+function TBranchHelper.findByName(elementName: string): TBranch;
+var
+  index: integer;
+begin
+  result:=nil;
+  if self.size = 0 then exit;
+  for index:= 0 to pred(self.size) do
     begin
-    if self[index].branch_name = branchName_ then
-      begin
-        result:=index;
-        Exit;
-      end;
+      if (Self[index].name = elementName) then
+        begin
+          result:=self[index];
+          exit;
+        end;
     end;
 end;
 
-function TBranchHelper.delete(branchName_:string): integer;
-var
-  branchIndex:integer;
+{ TBranch }
+
+constructor TBranch.create(name_: string; storyName_: string; story_: integer);
 begin
-  result:=self.size;
-  branchIndex:= self.indexOf(branchName_);
-  if (branchIndex = -1) then exit;
-  while (branchIndex < pred(self.size))  do
-  self[branchIndex]:=self[branchIndex+1];
-  setLength(self, length(self) - 1);
+  fName:=name_;
+  fStoryName:=storyName_;
+  fStory:=story_;
 end;
-
-
 
 end.
 

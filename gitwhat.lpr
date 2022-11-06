@@ -11,7 +11,7 @@ uses
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, main, fileUtilities, config_xml_doc_handler, repo, gitManager, git_api,
-  gitResponseInterface, gitResponse, xml_doc_handler, pvproject;
+  gitResponseInterface, gitResponse, xml_doc_handler, pvproject, branch;
 
 {$R *.res}
 
