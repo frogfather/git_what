@@ -32,6 +32,8 @@ type
   function push(element:TBranch):integer;
   function indexOf(element:TBranch):integer;
   function findByName(elementName:string):TBranch;
+  procedure clear;
+  procedure delete(branch:TBranch);
   end;
 
 implementation
@@ -53,7 +55,9 @@ end;
 
 function TBranchHelper.push(element: TBranch): integer;
 begin
-  insert(element,self,length(self));
+  if (self.indexOf(element) = -1) then
+  setLength(self, succ(self.size));
+  self[pred(self.size)] := element;
   result:=self.size;
 end;
 
@@ -67,7 +71,7 @@ var
   index: integer;
 begin
   result:=nil;
-  if self.size = 0 then exit;
+  if (self = nil) or (self.size = 0) then exit; //These are the same thing!
   for index:= 0 to pred(self.size) do
     begin
       if (Self[index].name = elementName) then
@@ -76,6 +80,24 @@ begin
           exit;
         end;
     end;
+end;
+
+procedure TBranchHelper.clear;
+begin
+  setLength(self,0);
+end;
+
+procedure TBranchHelper.delete(branch: TBranch);
+var
+  itemAt, index:integer;
+begin
+  itemAt:=self.indexOf(branch);
+  if (itemAt > -1) then
+  begin
+    for index:=itemAt to pred(self.size) do
+      if (index < pred(self.size)) then self[index]:= self[index+1];
+    setLength(Self,length(self)-1);
+  end;
 end;
 
 { TBranch }

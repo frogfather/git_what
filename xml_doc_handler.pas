@@ -112,10 +112,8 @@ end;
 function TXMLDocumentHandler.addNode(parent, child: TDOMNode; Text: string; attributes: TStringArray): TDOMNode;
 begin
   if child = nil then exit;
-
   addTextValue(child,text);
   addAttributes(child,attributes);
-
   parent.AppendChild(child);
   result:= child;
 end;

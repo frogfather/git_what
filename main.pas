@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  FileUtilities, Fileutil, SynEdit,SynHighlighterPosition, SynEditHighlighter, config, process, gitManager, gitResponse;
+  FileUtilities, Fileutil, SynEdit,SynHighlighterPosition, SynEditHighlighter,
+  process, gitManager, gitResponse,pivotalApi,fpjson, jsonparser,TypInfo;
 
 type
 
@@ -14,9 +15,12 @@ type
 
   TForm1 = class(TForm)
     bCodeDirectory: TButton;
+    Button1: TButton;
+    Button2: TButton;
     cbCurrentRepo: TComboBox;
     cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
+    Edit1: TEdit;
     eStory: TEdit;
     ePivotal: TEdit;
     lProject: TLabel;
@@ -32,6 +36,8 @@ type
     spMain: TSplitter;
     gitBranchView: TSynEdit;
     spLog: TSplitter;
+    procedure Button1Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
     procedure cbCurrentBranchSelect(Sender: TObject);
     procedure cbCurrentRepoSelect(Sender: TObject);
     procedure eCodeDirectoryDblClick(Sender: TObject);
@@ -49,6 +55,7 @@ type
     procedure loadNames(currentRepoName:string);
     procedure updateBranchList;
     function getCurrentBranchIndex(branchList:TStrings):Integer;
+    function extractJSON(inputData: TJSONData; objectName: string; outputList: TStringlist; whitespace: string = ''): TStringlist;
   public
 
   end;
@@ -67,6 +74,33 @@ begin
   if (fGitWhat.currentrepo = nil) or (cbCurrentBranch.Text = '') then exit;
   fGitWhat.currentRepo.setCurrentBranch(cbCurrentBranch.Text);
 end;
+
+procedure TForm1.Button1Click(Sender: TObject);
+var
+  jData: TJSONObject;
+  extractedJSON: TStringlist;
+  api:TPivotalApi;
+begin
+  api:=TPivotalApi.Create;
+  gitbranchView.Clear;
+  jData := Api.getProjects;
+  extractedJSON:= extractJSON(jData,'',TStringlist.Create,'');
+  gitBranchView.Lines:= extractedJSON;
+end;
+
+procedure TForm1.Button2Click(Sender: TObject);
+  var
+  jData: TJSONObject;
+  extractedJSON: TStringlist;
+  api:TPivotalApi;
+begin
+  api:=TPivotalApi.Create;
+  gitbranchView.Clear;
+  jData := Api.getProject(edit1.Text);
+  extractedJSON:= extractJSON(jData,'',TStringlist.Create,'');
+  gitBranchView.Lines:= extractedJSON;
+end;
+
 
 procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
 begin
@@ -189,5 +223,42 @@ begin
     if branchList[result].Substring(0,1) = '*' then exit;
   result:=-1;
 end;
+
+function TForm1.extractJSON(inputData: TJSONData; objectName: string;
+  outputList: TStringlist; whitespace: string): TStringlist;
+var
+  object_type: string;
+  itemNo:Integer;
+  jItem:TJSONData;
+  bracket: char;
+begin
+  object_type := GetEnumName(TypeInfo(TJSONtype), Ord(inputData.JSONType));
+  case object_type of
+    'jtObject', 'jtArray':
+      begin
+      if (object_type = 'jtObject') then bracket := '{' else bracket := '[';
+      if length(objectName) > 0 then
+      outputList.Add(whitespace+objectName+': '+bracket) else
+        outputList.Add(whitespace+bracket);
+      whitespace:= whitespace + '    ';
+      for itemNo:=0 to inputData.Count - 1 do
+        begin
+          jItem := inputData.Items[itemNo];
+          //if it's an array the items won't have names
+          if (object_type = 'jtObject') then
+          extractJSON(jItem, TJSONObject(inputData).Names[itemNo], outputList, whitespace)
+          else extractJSON(jItem, '', outputList, whitespace);
+        end;
+      whitespace:=whitespace.Substring(0, length(whitespace)-4);
+      if (object_type = 'jtObject') then bracket := '}' else bracket := ']';
+      outputList.Add(whitespace+bracket);
+      end;
+    'jtNumber': outputList.Add(whitespace+objectName+': '+inttostr(inputData.AsInteger));
+    'jtString': outputList.Add(whitespace+objectName+': '+inputData.AsString);
+    'jtBoolean': outputList.Add(whitespace+objectName+': '+booltostr(inputData.AsBoolean));
+  end;
+  result:=outputList;
+end;
+
 end.
 
