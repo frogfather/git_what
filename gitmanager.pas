@@ -5,8 +5,8 @@ unit gitManager;
 interface
 
 uses
-  Classes, SysUtils,fileUtilities,fileUtil,repo,fgl,dateUtils,
-  git_api,gitResponse,xml_doc_handler,laz2_DOM;
+  Classes, SysUtils,fileUtil,repo,fgl,dateUtils,
+  git_api, gitResponse,xml_doc_handler,laz2_DOM,branch;
 type
   
   { TGitWhat }
@@ -119,8 +119,10 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
 procedure TGitWhat.toXML;
 var
   index:integer;
-  rootNode,reposNode,repoNode:TDOMNode;
+  rootNode,reposNode,repoNode,branchNode:TDOMNode;
   attributes:TStringArray;
+  currentBranch:TBranch;
+  currentBranchName:string;
 begin
   //create an xml document based on the gitManager class
   setLength(attributes,2);
@@ -128,8 +130,12 @@ begin
   with xmlDocumentHandler do
     begin
     initializeDoc;
+    //TODO we should save this information for every directory visited
+    //or at least every directory that has repos in it.
     addNode('','code-directory',codeDirectory);
     addNode('','current-repo',currentRepoName);
+    //So instead of having <repos> as top level we should
+    //have <directories> as top level with repos as a child of it
     reposNode:=addNode('','repos');
     for index:= 0 to pred(fRepositories.Count) do
       begin
@@ -137,7 +143,12 @@ begin
       repoNode:=createNode('repo','',attributes);
       repoNode.AppendChild(createNode('path',fRepositories.Data[index].path));
       repoNode.AppendChild(createNode('pivotal-project',fRepositories.Data[index].pivotalProject.ToString));
-      repoNode.AppendChild(createNode('current-branch',fRepositories.Data[index].currentBranch));
+      branchNode:=createNode('branch','');
+      currentBranch:= fRepositories.Data[index].currentBranch;
+      if (currentBranch <> nil) then currentBranchName:= currentBranch.name
+        else currentBranchName:='';
+      branchNode.AppendChild(createNode('branch-name', currentBranchName));
+      repoNode.AppendChild(branchNode);
       repoNode.AppendChild(createNode('last-used',DateToISO8601(fRepositories.Data[index].lastUsed)));
       reposNode.AppendChild(repoNode);
       end;
@@ -146,15 +157,16 @@ end;
 
 procedure TGitWhat.fromXML;
 var
-  reposNode,childNode:TDOMNode;
+  reposNode,childNode,repoCurrentBranchNode:TDOMNode;
   repoEnumerator:TDomNodeEnumerator;
-  repoPath,repoCurrentBranch:string;
+  repoPath:string;
   repoPivotal:integer;
   repoLastUsed:TDateTime;
+  repoCurrentBranch:TBranch;
 begin
   codeDirectory:= xmlDocumentHandler.getNodeTextValue('code-directory');
   currentRepoName:= xmlDocumentHandler.getNodeTextValue('current-repo');
-  //for repos we want to set the path, last used, pivotal project and current branch
+  //TODO there are probably build in methods on TXMLDocument that do this better
   reposNode:= xmlDocumentHandler.getNode('repos');
   if (reposNode <> Nil) and (reposNode.GetChildCount > 0) then
     begin
@@ -165,9 +177,16 @@ begin
       //create a repo from this
       repoPath:=childNode.ChildNodes.Item[0].TextContent;
       repoPivotal:=childNode.ChildNodes.Item[1].TextContent.ToInteger;
-      repoCurrentBranch:=childNode.ChildNodes.Item[2].TextContent;
+      repoCurrentBranchNode:=childNode.ChildNodes.Item[2];
       repoLastUsed:= ISO8601ToDate(childNode.ChildNodes.Item[3].TextContent);
-      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoPivotal,repoCurrentBranch))
+      if (repoCurrentBranchNode.GetChildCount = 3) then
+        begin
+        repoCurrentBranch:=TBranch.Create(
+          repoCurrentBranchNode.ChildNodes[0].TextContent,
+          repoCurrentBranchNode.ChildNodes[1].TextContent,
+          repoCurrentBranchNode.ChildNodes[2].TextContent.ToInteger);
+        end;
+      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch,repoPivotal))
       end;
     end;
 end;
@@ -342,7 +361,12 @@ begin
   gitApi:=TGitApi.create(currentRepo);
   branchResponse:=gitApi.getBranches;
   if branchResponse.success
-     then result:= branchResponse.results
+     then
+       begin
+       //Update currentRepo with branch information
+       currentrepo.updateBranches(branchResponse.results);
+       result:= branchResponse.results;
+       end
      else result:= TStringlist.Create;
 end;
 

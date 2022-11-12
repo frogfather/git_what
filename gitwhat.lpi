@@ -82,6 +82,28 @@
         <Filename Value="xml_doc_handler.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="pvproject.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="branch.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="httpclient.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="httpClient"/>
+      </Unit>
+      <Unit>
+        <Filename Value="pivotalapi.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="pivotalApi"/>
+      </Unit>
+      <Unit>
+        <Filename Value="header.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
