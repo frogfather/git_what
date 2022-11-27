@@ -6,8 +6,9 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  FileUtilities, Fileutil, SynEdit,SynHighlighterPosition, SynEditHighlighter,
-  process, gitManager, gitResponse,pivotalApi,fpjson, jsonparser,TypInfo;
+  ComCtrls, FileUtilities, Fileutil, SynEdit, SynHighlighterPosition,
+  SynEditHighlighter, process, gitManager, gitResponse, fpjson,
+  jsonparser, TypInfo;
 
 type
 
@@ -15,20 +16,21 @@ type
 
   TForm1 = class(TForm)
     bCodeDirectory: TButton;
-    Button1: TButton;
-    Button2: TButton;
+    bSave: TButton;
     cbCurrentRepo: TComboBox;
     cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
-    Edit1: TEdit;
+    eTrackerToken: TEdit;
     eStory: TEdit;
     ePivotal: TEdit;
+    lTrackerToken: TLabel;
     lProject: TLabel;
     lStory: TLabel;
     lCurrentBranch: TLabel;
     lCurrentRepo: TLabel;
     lCodeDirectory: TLabel;
     lbLog: TListBox;
+    PageControl1: TPageControl;
     pLog: TPanel;
     pTree: TPanel;
     pDirectory: TPanel;
@@ -36,8 +38,9 @@ type
     spMain: TSplitter;
     gitBranchView: TSynEdit;
     spLog: TSplitter;
-    procedure Button1Click(Sender: TObject);
-    procedure Button2Click(Sender: TObject);
+    tsMain: TTabSheet;
+    tsSettings: TTabSheet;
+    procedure bSaveClick(Sender: TObject);
     procedure cbCurrentBranchSelect(Sender: TObject);
     procedure cbCurrentRepoSelect(Sender: TObject);
     procedure eCodeDirectoryDblClick(Sender: TObject);
@@ -72,35 +75,14 @@ implementation
 procedure TForm1.cbCurrentBranchSelect(Sender: TObject);
 begin
   if (fGitWhat.currentrepo = nil) or (cbCurrentBranch.Text = '') then exit;
-  fGitWhat.currentRepo.setCurrentBranch(cbCurrentBranch.Text);
+  fGitWhat.currentBranchName:= cbCurrentBranch.Text;
 end;
 
-procedure TForm1.Button1Click(Sender: TObject);
-var
-  jData: TJSONObject;
-  extractedJSON: TStringlist;
-  api:TPivotalApi;
+procedure TForm1.bSaveClick(Sender: TObject);
 begin
-  api:=TPivotalApi.Create;
-  gitbranchView.Clear;
-  jData := Api.getProjects;
-  extractedJSON:= extractJSON(jData,'',TStringlist.Create,'');
-  gitBranchView.Lines:= extractedJSON;
+  //filename hard coded for the moment
+  writeStream(getUsrDir('cloudsoft')+'/.gitwhatpivotal.cfg', 'X-TrackerToken,'+eTrackerToken.Text);
 end;
-
-procedure TForm1.Button2Click(Sender: TObject);
-  var
-  jData: TJSONObject;
-  extractedJSON: TStringlist;
-  api:TPivotalApi;
-begin
-  api:=TPivotalApi.Create;
-  gitbranchView.Clear;
-  jData := Api.getProject(edit1.Text);
-  extractedJSON:= extractJSON(jData,'',TStringlist.Create,'');
-  gitBranchView.Lines:= extractedJSON;
-end;
-
 
 procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
 begin
@@ -118,6 +100,7 @@ end;
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
   fGitWhat.saveToFile(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
+
 end;
 
 

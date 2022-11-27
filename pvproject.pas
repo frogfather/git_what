@@ -29,6 +29,7 @@ type
         kind,name,Project_type: string;
         Public: boolean;
         Start_time,Created_at,Updated_at: string);
+      property id:integer read fId;
   end;
 
 implementation
@@ -36,7 +37,7 @@ implementation
 { TPivotal }
 
 constructor TPivotal.create(
-  id,Account_id, Current_iteration_number: integer;
+  id, Account_id, Current_iteration_number: integer;
   kind, name, Project_type: string;
   Public: boolean;
   Start_time, Created_at, Updated_at: string);

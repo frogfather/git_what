@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,fileUtil,repo,fgl,dateUtils,
-  git_api, gitResponse,xml_doc_handler,laz2_DOM,branch;
+  git_api, gitResponse,xml_doc_handler,laz2_DOM,branch,pvProject,pivotalApi;
 type
   
   { TGitWhat }
@@ -14,12 +14,12 @@ type
   TGitWhat = class(TInterfacedObject)
     private
     fXMLDocumentHandler:TXMLDocumentHandler;
-    fCodeDirectory:String;
+    fCurrentDirectory:String;
     fCurrentRepoName:string;
     fNewRepositories: specialize TFPGMap<string,TRepo>;
     fRepositories: specialize TFPGMap<string,TRepo>;
     fExclusions:TStringlist;
-    fCodeDirectoryChanged:TNotifyEvent;
+    fCurrentDirectoryChanged:TNotifyEvent;
     fRepositoriesChanged:TNotifyEvent;
     fCurrentRepoChanged:TNotifyEvent;
     fCurrentBranchChanged:TNotifyEvent;
@@ -32,7 +32,7 @@ type
     procedure deleteRepo(repoName: string);
     procedure setCodeDirectory(codeDirectory_:string);
     procedure setCurrentRepoName(repoName_:string);
-    procedure setCurrentBranch(branchName_: string);
+    procedure setCurrentBranchName(branchName_: string);
     procedure rescanRepos;
     procedure doRescanRepos(codeDir: String);
     procedure toXML;
@@ -40,6 +40,7 @@ type
     function getCurrentRepo:TRepo;
     function getBranches:TStringlist;
     function onCurrentBranch(branch:string):Boolean;
+    function getCurrentBranchName:string;
     property exclusions: TStringlist read fExclusions;
     property xmlDocumentHandler:TXMLDocumentHandler read fXMLDocumentHandler;
     public
@@ -51,9 +52,10 @@ type
     function getRepoNames:TStringlist;
     function saveToFile(fileName:string):boolean;
     function loadFromFile(fileName:string):boolean;
-    property codeDirectory: string read fCodeDirectory write setCodeDirectory;
+    property codeDirectory: string read fCurrentDirectory write setCodeDirectory;
     property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
     property currentrepo: TRepo read getCurrentrepo;
+    property currentBranchName: string read GetcurrentBranchName write SetcurrentBranchName;
     property branches: TStringList read Getbranches;
   end;
 
@@ -67,7 +69,7 @@ constructor TGitWhat.create(
   onCurrentRepoChanged,
   onCurrentBranchChanged:TNotifyEvent);
 begin
-  fCodeDirectory:='';
+  fCurrentDirectory:='';
   fRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fNewRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fRepositories.Sorted:=true;
@@ -75,7 +77,7 @@ begin
   fExclusions.Add('node_modules');
   fExclusions.Add('lib');
   fCurrentRepoName:='';
-  fCodeDirectoryChanged:=onCodeDirectoryChanged;
+  fCurrentDirectoryChanged:=onCodeDirectoryChanged;
   fRepositoriesChanged:=onReposChanged;
   fCurrentRepoChanged:=onCurrentRepoChanged;
   fCurrentBranchChanged:=onCurrentBranchChanged;
@@ -119,35 +121,39 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
 procedure TGitWhat.toXML;
 var
   index:integer;
-  rootNode,reposNode,repoNode,branchNode:TDOMNode;
+  reposNode,repoNode,branchNode:TDOMNode;
   attributes:TStringArray;
-  currentBranch:TBranch;
-  currentBranchName:string;
+  currentBranchForRepo:TBranch;
+  currentBranchNameForRepo:string;
 begin
   //create an xml document based on the gitManager class
-  setLength(attributes,2);
+  setLength(attributes,4);
   attributes[0]:='name';
+  attributes[2]:='ref';
   with xmlDocumentHandler do
     begin
     initializeDoc;
-    //TODO we should save this information for every directory visited
-    //or at least every directory that has repos in it.
     addNode('','code-directory',codeDirectory);
     addNode('','current-repo',currentRepoName);
-    //So instead of having <repos> as top level we should
-    //have <directories> as top level with repos as a child of it
+    //Add pivotal projects with id="x"
+    //Then in the repo use ref="x" to the project
+
+    //For branches add pivotal stories with id="x"
+    //then in branch use ref="x" to the story
+
     reposNode:=addNode('','repos');
     for index:= 0 to pred(fRepositories.Count) do
       begin
+      currentBranchForRepo:=fRepositories.Data[index].currentBranch;
+      if (currentBranchForRepo = nil)
+        then currentBranchNameForRepo:=''
+        else currentBranchNameForRepo:= currentBranchForRepo.name;
       attributes[1]:=fRepositories.Keys[index];
+      attributes[3]:=fRepositories.Data[index].pivotalProjectId.ToString;
       repoNode:=createNode('repo','',attributes);
       repoNode.AppendChild(createNode('path',fRepositories.Data[index].path));
-      repoNode.AppendChild(createNode('pivotal-project',fRepositories.Data[index].pivotalProject.ToString));
       branchNode:=createNode('branch','');
-      currentBranch:= fRepositories.Data[index].currentBranch;
-      if (currentBranch <> nil) then currentBranchName:= currentBranch.name
-        else currentBranchName:='';
-      branchNode.AppendChild(createNode('branch-name', currentBranchName));
+      branchNode.AppendChild(createNode('branch-name', currentBranchNameForRepo));
       repoNode.AppendChild(branchNode);
       repoNode.AppendChild(createNode('last-used',DateToISO8601(fRepositories.Data[index].lastUsed)));
       reposNode.AppendChild(repoNode);
@@ -160,7 +166,7 @@ var
   reposNode,childNode,repoCurrentBranchNode:TDOMNode;
   repoEnumerator:TDomNodeEnumerator;
   repoPath:string;
-  repoPivotal:integer;
+  repoPivotal:TPivotal;
   repoLastUsed:TDateTime;
   repoCurrentBranch:TBranch;
 begin
@@ -176,9 +182,9 @@ begin
       childNode:=repoEnumerator.Current;
       //create a repo from this
       repoPath:=childNode.ChildNodes.Item[0].TextContent;
-      repoPivotal:=childNode.ChildNodes.Item[1].TextContent.ToInteger;
-      repoCurrentBranchNode:=childNode.ChildNodes.Item[2];
-      repoLastUsed:= ISO8601ToDate(childNode.ChildNodes.Item[3].TextContent);
+      //repoPivotal:=childNode.ChildNodes.Item[1].TextContent.ToInteger;
+      repoCurrentBranchNode:=childNode.ChildNodes.Item[1];
+      repoLastUsed:= ISO8601ToDate(childNode.ChildNodes.Item[2].TextContent);
       if (repoCurrentBranchNode.GetChildCount = 3) then
         begin
         repoCurrentBranch:=TBranch.Create(
@@ -186,7 +192,7 @@ begin
           repoCurrentBranchNode.ChildNodes[1].TextContent,
           repoCurrentBranchNode.ChildNodes[2].TextContent.ToInteger);
         end;
-      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch,repoPivotal))
+      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch)) //pivotal project  as last param
       end;
     end;
 end;
@@ -291,29 +297,36 @@ end;
 
 procedure TGitWhat.setCodeDirectory(codeDirectory_: string);
 begin
-  if (directoryExists(codeDirectory_)) and (fCodeDirectory <> codeDirectory_) then
+  if (directoryExists(codeDirectory_)) and (fCurrentDirectory <> codeDirectory_) then
   begin
     chDir(codeDirectory_);
-    fCodeDirectory:=codeDirectory_;
+    fCurrentDirectory:=codeDirectory_;
     rescanRepos;
-    fCodeDirectoryChanged(self);
+    fCurrentDirectoryChanged(self);
   end;
 end;
 
 procedure TGitWhat.setCurrentRepoName(repoName_: string);
 var
   repoIndex:integer;
+  branchResponse:TGitResponse;
+  gitApi: TGitApi;
+  index:integer;
 begin
   fRepositories.Find(repoName_, repoIndex);
   if (repoIndex > 0) and (fCurrentRepoName <> repoName_) then
     begin
     chDir(fRepositories.Data[repoIndex].path);
     fCurrentRepoName:=repoName_;
+    gitApi:=TGitApi.create(currentRepo);
+    branchResponse:= gitApi.getBranches;
+    if branchResponse.success
+      then currentRepo.updateBranches(branchResponse.results);
     fCurrentRepoChanged(self);
     end;
 end;
 
-procedure TGitWhat.setCurrentBranch(branchName_: string);
+procedure TGitWhat.setCurrentBranchName(branchName_: string);
 var
   branchResponse,changeResponse :TGitResponse;
   gitApi: TGitApi;
@@ -338,6 +351,7 @@ begin
         fCurrentBranchChanged(changeResponse);
         exit;
         end;
+      currentRepo.setCurrentBranch(branchName_);
       end;
     fCurrentBranchChanged(gitApi.logWithDecoration);
     end;
@@ -373,6 +387,15 @@ end;
 function TGitWhat.onCurrentBranch(branch: string): Boolean;
 begin
   result:= branch.Substring(0,1) = '*';
+end;
+
+function TGitWhat.getCurrentBranchName: string;
+var
+  currRepo:TRepo;
+begin
+  currRepo:=currentRepo;
+  if (currRepo = Nil) or (currRepo.currentBranch = Nil) then exit;
+  result:=currRepo.currentBranch.name;
 end;
 
 end.

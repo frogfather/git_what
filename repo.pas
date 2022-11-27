@@ -5,7 +5,7 @@ unit repo;
 interface
 
 uses
-  Classes, SysUtils,arrayUtils,branch;
+  Classes, SysUtils,arrayUtils,branch,pvProject;
 type
   
   { TRepo }
@@ -15,22 +15,23 @@ type
     private
     fpath:string;
     flastUsed:TDateTime;
-    fPivotalProject: integer;
+    fPivotalProjectId: integer;
+    fHasPivotalProject: boolean;
     fBranches: TBranches;
     fCurrentBranch: TBranch;
     procedure setLastUsed(lastUsed_:TDateTime);
     procedure setPath(path_:string);
-    procedure setPivotalProject(projectId:integer);
     procedure addBranch(branch_:TBranch);
     procedure removeBranch(branchName_:string);
     procedure removeBranch(branch:TBranch);
     public
-    constructor create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch = nil; pivotalProject_:integer = -1);
+    constructor create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch = nil; pivotalProjectId_:integer = -1);
     procedure setCurrentBranch(branchName:string);
     procedure updateBranches(branchList:TStringList);
     property path: string read fPath write setPath;
     property lastUsed: TDateTime read fLastUsed write setLastUsed;
-    property pivotalProject: integer read fPivotalProject write setPivotalProject;
+    property pivotalProjectId: integer read fPivotalProjectId;
+    property hasPivotalProject:boolean read fHasPivotalProject;
     property currentBranch: TBranch read fCurrentBranch;
   end;
 
@@ -46,11 +47,6 @@ end;
 procedure TRepo.setPath(path_: string);
 begin
   fPath:=path_;
-end;
-
-procedure TRepo.setPivotalProject(projectId: integer);
-begin
-  fPivotalProject := projectId;
 end;
 
 procedure TRepo.setCurrentBranch(branchName: string);
@@ -71,7 +67,6 @@ var
   toRemove:TBranches;
 begin
   if branchList.Count = 0 then fBranches.clear;
-
   for index:=0 to pred(branchList.Count) do
     addBranch(TBranch.create(branchList[index]));
 
@@ -103,11 +98,11 @@ begin
   fBranches.delete(branch);
 end;
 
-constructor TRepo.create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch; pivotalProject_:integer);
+constructor TRepo.create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch; pivotalProjectId_:integer);
 begin
   fPath:=path_;
   fLastUsed:=lastUsed_;
-  fPivotalProject:=pivotalProject_;
+  fPivotalProjectId:=pivotalProjectId_;
   fCurrentBranch:=currentBranch_;
   if (currentBranch_ <> nil) then
   fBranches.push(currentBranch_);
