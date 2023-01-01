@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
   ComCtrls, FileUtilities, Fileutil, SynEdit, SynHighlighterPosition,
   SynEditHighlighter, process, gitManager, gitResponse, fpjson,
-  jsonparser, TypInfo;
+  jsonparser, TypInfo,pivotalApi;
 
 type
 
@@ -17,6 +17,7 @@ type
   TForm1 = class(TForm)
     bCodeDirectory: TButton;
     bSave: TButton;
+    Button1: TButton;
     cbCurrentRepo: TComboBox;
     cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
@@ -41,6 +42,7 @@ type
     tsMain: TTabSheet;
     tsSettings: TTabSheet;
     procedure bSaveClick(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
     procedure cbCurrentBranchSelect(Sender: TObject);
     procedure cbCurrentRepoSelect(Sender: TObject);
     procedure eCodeDirectoryDblClick(Sender: TObject);
@@ -69,6 +71,8 @@ var
 implementation
 
 {$R *.lfm}
+const configFileName = '/.gitwhat/config.csv';
+const dataFileName = '/.gitwhat/data.xml';
 
 { TForm1 }
 
@@ -81,7 +85,27 @@ end;
 procedure TForm1.bSaveClick(Sender: TObject);
 begin
   //filename hard coded for the moment
-  writeStream(getUsrDir('cloudsoft')+'/.gitwhatpivotal.cfg', 'X-TrackerToken,'+eTrackerToken.Text);
+  writeStream(getUsrDir('cloudsoft')+configFileName, 'X-TrackerToken,'+eTrackerToken.Text);
+end;
+
+procedure TForm1.Button1Click(Sender: TObject);
+var
+  piv:TPivotalApi;
+  res:TJSONObject;
+  projs:TJSONArray;
+  index:integer;
+  proj:TJSONData;
+begin
+  piv:=TPivotalApi.create(getUsrDir('cloudsoft')+configFileName);
+  gitBranchView.Clear;
+  res:=piv.getProjects;
+  projs:=res.Arrays['results'];
+  for index:=0 to pred(projs.Count) do
+    begin
+    proj:=projs.Objects[index];
+    gitBranchView.Lines.Add(proj.GetPath('id').AsString);
+    gitBranchView.Lines.Add(proj.GetPath('name').AsString);
+    end;
 end;
 
 procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
@@ -99,8 +123,7 @@ end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
-  fGitWhat.saveToFile(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
-
+  fGitWhat.saveToFile(getUsrDir('cloudsoft')+dataFileName);
 end;
 
 
@@ -115,7 +138,7 @@ begin
     @onReposChanged,
     @onCurrentRepoChanged,
     @onCurrentBranchChanged);
-  fGitWhat.loadFromFile(getUsrDir('cloudsoft')+'/.gitwhat.cfg');
+  fGitWhat.loadFromFile(getUsrDir('cloudsoft')+dataFileName);
   eCodeDirectory.Text:=fGitWhat.codeDirectory;
   cbCurrentRepo.Items:= fGitWhat.getRepoNames;
   cbCurrentRepo.ItemIndex:=cbCurrentRepo.items.indexOf(fGitWhat.currentRepoName);

@@ -15,10 +15,8 @@ type
   TBranch = class(TInterfacedObject)
     private
     fName: string;
-    fStory: integer;
-    fStoryName: string;
     public
-    constructor create(name_:string; storyName_:string = ''; story_: integer = -1);
+    constructor create(name_:string);
     property name: string read fName write fName;
   end;
 
@@ -102,11 +100,9 @@ end;
 
 { TBranch }
 
-constructor TBranch.create(name_: string; storyName_: string; story_: integer);
+constructor TBranch.create(name_: string);
 begin
   fName:=name_;
-  fStoryName:=storyName_;
-  fStory:=story_;
 end;
 
 end.

@@ -129,18 +129,26 @@ begin
   //create an xml document based on the gitManager class
   setLength(attributes,4);
   attributes[0]:='name';
-  attributes[2]:='ref';
+  attributes[2]:='pivotal-project';
   with xmlDocumentHandler do
     begin
     initializeDoc;
     addNode('','code-directory',codeDirectory);
     addNode('','current-repo',currentRepoName);
-    //Add pivotal projects with id="x"
-    //Then in the repo use ref="x" to the project
-
-    //For branches add pivotal stories with id="x"
-    //then in branch use ref="x" to the story
-
+    //need to record pivotal projects
+    //<pivotal-projects>
+    //  <pivotal-project>
+    //    <id>project-id</id>
+    //    <name>project-name</name>
+    //    <stories>
+    //    <story>
+    //    <id>story-id</id>
+    //    <name>story-name</name>
+    //    can get other info as required
+    //    </story>
+    //    </stories>
+    //  </pivotal-project>
+    //</pivotal-projects>
     reposNode:=addNode('','repos');
     for index:= 0 to pred(fRepositories.Count) do
       begin
@@ -153,8 +161,10 @@ begin
       repoNode:=createNode('repo','',attributes);
       repoNode.AppendChild(createNode('path',fRepositories.Data[index].path));
       branchNode:=createNode('branch','');
+      WriteLn('write branch name '+currentBranchNameForRepo);
       branchNode.AppendChild(createNode('branch-name', currentBranchNameForRepo));
       repoNode.AppendChild(branchNode);
+      WriteLn('write branch last used '+DateToISO8601(fRepositories.Data[index].lastUsed));
       repoNode.AppendChild(createNode('last-used',DateToISO8601(fRepositories.Data[index].lastUsed)));
       reposNode.AppendChild(repoNode);
       end;
@@ -182,15 +192,12 @@ begin
       childNode:=repoEnumerator.Current;
       //create a repo from this
       repoPath:=childNode.ChildNodes.Item[0].TextContent;
-      //repoPivotal:=childNode.ChildNodes.Item[1].TextContent.ToInteger;
       repoCurrentBranchNode:=childNode.ChildNodes.Item[1];
       repoLastUsed:= ISO8601ToDate(childNode.ChildNodes.Item[2].TextContent);
-      if (repoCurrentBranchNode.GetChildCount = 3) then
+      if (repoCurrentBranchNode.GetChildCount > 0) then
         begin
         repoCurrentBranch:=TBranch.Create(
-          repoCurrentBranchNode.ChildNodes[0].TextContent,
-          repoCurrentBranchNode.ChildNodes[1].TextContent,
-          repoCurrentBranchNode.ChildNodes[2].TextContent.ToInteger);
+          repoCurrentBranchNode.ChildNodes[0].TextContent)
         end;
       addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch)) //pivotal project  as last param
       end;
