@@ -25,6 +25,7 @@ type
     function getBranches:TGitResponse;
     function changeBranch(branchName:string):TGitResponse;
     function logWithDecoration:TGitResponse;
+    function getStatus:TGitResponse;
   end;
 
 implementation
@@ -40,7 +41,7 @@ end;
 
 function TGitApi.executeCommand: TStringList;
 var
-  param:integer;
+  paramIndex:integer;
 begin
   result:=TStringlist.Create;
   if (fRepo = nil) then exit;
@@ -48,9 +49,9 @@ begin
   if not directoryExists('.git') then exit;
   fProcess.Parameters.Clear;
   fProcess.Executable := '/bin/sh';
-  for param:= 0 to pred(params.Count) do
+  for paramIndex:= 0 to pred(params.Count) do
     begin
-    fProcess.Parameters.Add(params[param])
+    fProcess.Parameters.Add(params[paramIndex])
     end;
   fProcess.Options := fProcess.Options + [poWaitOnExit, poUsePipes, poStderrToOutPut];
   fProcess.Execute;
@@ -85,9 +86,17 @@ end;
 function TGitApi.logWithDecoration: TGitResponse;
 begin
   resetParams;
-  params.Add('git log --graph --oneline --decorate');
+  params.Add('git log --graph --oneline --decorate -50');
   result:=TGitResponse.create(executeCommand);
 end;
+
+function TGitApi.getStatus: TGitResponse;
+begin
+  resetParams;
+  params.Add('git status');
+  result:=TGitResponse.create(executeCommand);
+end;
+
 
 
 end.

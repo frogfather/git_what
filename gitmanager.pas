@@ -41,6 +41,7 @@ type
     function getBranches:TStringlist;
     function onCurrentBranch(branch:string):Boolean;
     function getCurrentBranchName:string;
+    function getStatus: TStringlist;
     property exclusions: TStringlist read fExclusions;
     property xmlDocumentHandler:TXMLDocumentHandler read fXMLDocumentHandler;
     public
@@ -57,6 +58,7 @@ type
     property currentrepo: TRepo read getCurrentrepo;
     property currentBranchName: string read GetcurrentBranchName write SetcurrentBranchName;
     property branches: TStringList read Getbranches;
+    property status: TStringList read GetStatus;
   end;
 
 implementation
@@ -317,6 +319,7 @@ procedure TGitWhat.setCurrentRepoName(repoName_: string);
 var
   repoIndex:integer;
   branchResponse:TGitResponse;
+  statusResponse:TGitResponse;
   gitApi: TGitApi;
   index:integer;
 begin
@@ -329,6 +332,9 @@ begin
     branchResponse:= gitApi.getBranches;
     if branchResponse.success
       then currentRepo.updateBranches(branchResponse.results);
+    statusResponse:= gitApi.getStatus;
+    if statusResponse.success
+      then currentRepo.setRepoStatus(statusResponse.results);
     fCurrentRepoChanged(self);
     end;
 end;
@@ -404,6 +410,23 @@ begin
   if (currRepo = Nil) or (currRepo.currentBranch = Nil) then exit;
   result:=currRepo.currentBranch.name;
 end;
+
+function TGitWhat.getStatus: TStringlist;
+var
+  currRepo:TRepo;
+  gitApi: TGitApi;
+  statusResponse:TgitResponse;
+begin
+  result:=TStringlist.create;
+  currRepo:=currentRepo;
+  if (currRepo = Nil) or (currRepo.currentBranch = Nil) then exit;
+  gitApi:=TGitApi.create(currRepo);
+  statusResponse:=gitApi.getStatus;
+  currRepo.setRepoStatus(statusResponse.results);
+  result:=currRepo.status;
+end;
+
+
 
 end.
 

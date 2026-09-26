@@ -18,6 +18,7 @@ type
     fPivotalProjectId: integer;
     fHasPivotalProject: boolean;
     fBranches: TBranches;
+    fStatus:TStringList;
     fCurrentBranch: TBranch;
     procedure setLastUsed(lastUsed_:TDateTime);
     procedure setPath(path_:string);
@@ -28,11 +29,13 @@ type
     constructor create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch = nil; pivotalProjectId_:integer = -1);
     procedure setCurrentBranch(branchName:string);
     procedure updateBranches(branchList:TStringList);
+    procedure setRepoStatus(status:TStringList);
     property path: string read fPath write setPath;
     property lastUsed: TDateTime read fLastUsed write setLastUsed;
     property pivotalProjectId: integer read fPivotalProjectId;
     property hasPivotalProject:boolean read fHasPivotalProject;
     property currentBranch: TBranch read fCurrentBranch;
+    property status:TStringList read fStatus;
   end;
 
 implementation
@@ -69,7 +72,7 @@ begin
   if branchList.Count = 0 then fBranches.clear;
   for index:=0 to pred(branchList.Count) do
     addBranch(TBranch.create(branchList[index]));
-
+  toRemove:=TBranches.create;
   for index:=0 to pred(fBranches.size) do
     begin
     if (branchlist.IndexOf(fBranches[index].name) = -1)
@@ -98,12 +101,18 @@ begin
   fBranches.delete(branch);
 end;
 
+procedure TRepo.setRepoStatus(status:TStringList);
+begin
+  fStatus:=status;
+end;
+
 constructor TRepo.create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch; pivotalProjectId_:integer);
 begin
   fPath:=path_;
   fLastUsed:=lastUsed_;
   fPivotalProjectId:=pivotalProjectId_;
   fCurrentBranch:=currentBranch_;
+  fStatus:=TStringlist.create;
   if (currentBranch_ <> nil) then
   fBranches.push(currentBranch_);
 end;

@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
   ComCtrls, FileUtilities, Fileutil, SynEdit, SynHighlighterPosition,
   SynEditHighlighter, process, gitManager, gitResponse, fpjson,
-  jsonparser, TypInfo,pivotalApi;
+  jsonparser, TypInfo,pivotalApi, Types;
 
 type
 
@@ -17,16 +17,13 @@ type
   TForm1 = class(TForm)
     bCodeDirectory: TButton;
     bSave: TButton;
-    Button1: TButton;
+    bTest: TButton;
     cbCurrentRepo: TComboBox;
     cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
     eTrackerToken: TEdit;
-    eStory: TEdit;
-    ePivotal: TEdit;
+    lbRepoStatus: TListBox;
     lTrackerToken: TLabel;
-    lProject: TLabel;
-    lStory: TLabel;
     lCurrentBranch: TLabel;
     lCurrentRepo: TLabel;
     lCodeDirectory: TLabel;
@@ -42,13 +39,15 @@ type
     tsMain: TTabSheet;
     tsSettings: TTabSheet;
     procedure bSaveClick(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
     procedure cbCurrentBranchSelect(Sender: TObject);
     procedure cbCurrentRepoSelect(Sender: TObject);
     procedure eCodeDirectoryDblClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure gitBranchViewChange(Sender: TObject);
+    procedure PageControl1Change(Sender: TObject);
+    procedure tsSettingsContextPopup(Sender: TObject; MousePos: TPoint;
+      var Handled: Boolean);
   private
     fGitWhat: TGitWhat;
     fHighlighter:TSynPositionHighlighter;
@@ -76,38 +75,25 @@ const dataFileName = '/.gitwhat/data.xml';
 
 { TForm1 }
 
+//Sets the requested branch name on the GitManager
+//Once the requested branch has been successfully selected
+//The onCurrentBranchChanged event is fired.
 procedure TForm1.cbCurrentBranchSelect(Sender: TObject);
 begin
   if (fGitWhat.currentrepo = nil) or (cbCurrentBranch.Text = '') then exit;
-  fGitWhat.currentBranchName:= cbCurrentBranch.Text;
+  if (fGitWhat.currentBranchName <> cbCurrentBranch.Text) then
+     fGitWhat.currentBranchName:= cbCurrentBranch.Text;
 end;
 
 procedure TForm1.bSaveClick(Sender: TObject);
 begin
   //filename hard coded for the moment
-  writeStream(getUsrDir('cloudsoft')+configFileName, 'X-TrackerToken,'+eTrackerToken.Text);
+  writeStream(getUsrDir('johncampbell')+configFileName, 'X-TrackerToken,'+eTrackerToken.Text);
 end;
 
-procedure TForm1.Button1Click(Sender: TObject);
-var
-  piv:TPivotalApi;
-  res:TJSONObject;
-  projs:TJSONArray;
-  index:integer;
-  proj:TJSONData;
-begin
-  piv:=TPivotalApi.create(getUsrDir('cloudsoft')+configFileName);
-  gitBranchView.Clear;
-  res:=piv.getProjects;
-  projs:=res.Arrays['results'];
-  for index:=0 to pred(projs.Count) do
-    begin
-    proj:=projs.Objects[index];
-    gitBranchView.Lines.Add(proj.GetPath('id').AsString);
-    gitBranchView.Lines.Add(proj.GetPath('name').AsString);
-    end;
-end;
-
+//Sets the requested repo name on the gitManager.
+//Once the repo has been selected the onCurrentRepoChanged event
+//is fired.
 procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
 begin
   fGitwhat.currentRepoName:=cbCurrentRepo.Text;
@@ -123,7 +109,7 @@ end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
-  fGitWhat.saveToFile(getUsrDir('cloudsoft')+dataFileName);
+  fGitWhat.saveToFile(getUsrDir('johncampbell')+dataFileName);
 end;
 
 
@@ -138,7 +124,7 @@ begin
     @onReposChanged,
     @onCurrentRepoChanged,
     @onCurrentBranchChanged);
-  fGitWhat.loadFromFile(getUsrDir('cloudsoft')+dataFileName);
+  fGitWhat.loadFromFile(getUsrDir('johncampbell')+dataFileName);
   eCodeDirectory.Text:=fGitWhat.codeDirectory;
   cbCurrentRepo.Items:= fGitWhat.getRepoNames;
   cbCurrentRepo.ItemIndex:=cbCurrentRepo.items.indexOf(fGitWhat.currentRepoName);
@@ -154,6 +140,17 @@ begin
     begin
     fHighlighter.AddToken(index,gitBranchView.Lines[index].Length,fAttrTest);
     end;
+end;
+
+procedure TForm1.PageControl1Change(Sender: TObject);
+begin
+
+end;
+
+procedure TForm1.tsSettingsContextPopup(Sender: TObject; MousePos: TPoint;
+  var Handled: Boolean);
+begin
+
 end;
 
 procedure TForm1.onCodeDirectoryChanged(sender: TObject);
@@ -172,13 +169,16 @@ if (cbCurrentRepo.ItemIndex > -1)
    loadNames(currentRepoName);
 end;
 
+//Event fired if the gitManager has successfully switched to a new repo.
 procedure TForm1.onCurrentRepoChanged(sender: TObject);
 begin
   updateBranchList;
   cbCurrentBranchSelect(self);
+  lbRepoStatus.items:=fGitWhat.currentrepo.status;
   lbLog.items.add('Switched to repo '+cbCurrentRepo.Text+' - branch '+cbCurrentBranch.Text);
 end;
 
+//Event fired if the gitManager has successfully switched to a new branch.
 procedure TForm1.onCurrentBranchChanged(sender: TObject);
 var
   index:integer;
