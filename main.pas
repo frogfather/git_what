@@ -12,9 +12,9 @@ uses
 
 type
 
-  { TForm1 }
+  { TmainForm }
 
-  TForm1 = class(TForm)
+  TmainForm = class(TForm)
     bCodeDirectory: TButton;
     bSave: TButton;
     cbCurrentRepo: TComboBox;
@@ -61,7 +61,7 @@ type
   end;
 
 var
-  Form1: TForm1;
+  mainForm: TmainForm;
 
 implementation
 
@@ -69,19 +69,19 @@ implementation
 const configFileName = '/.gitwhat/config.csv';
 const dataFileName = '/.gitwhat/data.xml';
 
-{ TForm1 }
+{ TmainForm }
 
 //Sets the requested branch name on the GitManager
 //Once the requested branch has been successfully selected
 //The onCurrentBranchChanged event is fired.
-procedure TForm1.cbCurrentBranchSelect(Sender: TObject);
+procedure TmainForm.cbCurrentBranchSelect(Sender: TObject);
 begin
   if (fGitWhat.currentrepo = nil) or (cbCurrentBranch.Text = '') then exit;
   if (fGitWhat.currentBranchName <> cbCurrentBranch.Text) then
      fGitWhat.currentBranchName:= cbCurrentBranch.Text;
 end;
 
-procedure TForm1.bSaveClick(Sender: TObject);
+procedure TmainForm.bSaveClick(Sender: TObject);
 begin
   //filename hard coded for the moment
   writeStream(getUsrDir('johncampbell')+configFileName, 'X-TrackerToken,'+eTrackerToken.Text);
@@ -90,12 +90,12 @@ end;
 //Sets the requested repo name on the gitManager.
 //Once the repo has been selected the onCurrentRepoChanged event
 //is fired.
-procedure TForm1.cbCurrentRepoSelect(Sender: TObject);
+procedure TmainForm.cbCurrentRepoSelect(Sender: TObject);
 begin
   fGitwhat.currentRepoName:=cbCurrentRepo.Text;
 end;
 
-procedure TForm1.eCodeDirectoryDblClick(Sender: TObject);
+procedure TmainForm.eCodeDirectoryDblClick(Sender: TObject);
 begin
   If selectDirectoryDialog1.Execute then fGitWhat.codeDirectory:= selectDirectoryDialog1.FileName;
   if (eCodeDirectory.Text <> fGitWhat.codeDirectory)
@@ -103,13 +103,13 @@ begin
      else eCodeDirectory.Font.Color:=clBlack;
 end;
 
-procedure TForm1.FormDestroy(Sender: TObject);
+procedure TmainForm.FormDestroy(Sender: TObject);
 begin
   fGitWhat.saveToFile(getUsrDir('johncampbell')+dataFileName);
 end;
 
 
-procedure TForm1.FormShow(Sender: TObject);
+procedure TmainForm.FormShow(Sender: TObject);
 begin
   fHighlighter:=TSynPositionHighlighter.Create(Self);
   fAttrTest:=fHighlighter.CreateTokenID('AttrTest',clGreen,clNone,[]);
@@ -128,7 +128,7 @@ begin
   cbCurrentBranchSelect(self);
 end;
 
-procedure TForm1.gitBranchViewChange(Sender: TObject);
+procedure TmainForm.gitBranchViewChange(Sender: TObject);
 var
   index:integer;
 begin
@@ -139,14 +139,14 @@ begin
 end;
 
 //Event fired if the code directory is changed.
-procedure TForm1.onCodeDirectoryChanged(sender: TObject);
+procedure TmainForm.onCodeDirectoryChanged(sender: TObject);
   begin
   eCodeDirectory.Text:=fGitWhat.codeDirectory;
   eCodeDirectory.Font.Color:=clBlack;
 end;
 
 //Event fired if the list of repos has changed
-procedure TForm1.onReposChanged(sender: TObject);
+procedure TmainForm.onReposChanged(sender: TObject);
 var
   currentRepoName:String;
 begin
@@ -157,7 +157,7 @@ if (cbCurrentRepo.ItemIndex > -1)
 end;
 
 //Event fired if the gitManager has successfully switched to a new repo.
-procedure TForm1.onCurrentRepoChanged(sender: TObject);
+procedure TmainForm.onCurrentRepoChanged(sender: TObject);
 begin
   updateBranchList;
   cbCurrentBranchSelect(self);
@@ -166,7 +166,7 @@ begin
 end;
 
 //Event fired if the gitManager has successfully switched to a new branch.
-procedure TForm1.onCurrentBranchChanged(sender: TObject);
+procedure TmainForm.onCurrentBranchChanged(sender: TObject);
 var
   index:integer;
 begin
@@ -192,7 +192,7 @@ begin
     end;
 end;
 
-procedure TForm1.loadNames(currentRepoName:string);
+procedure TmainForm.loadNames(currentRepoName:string);
 var
   currentRepoNameIndex:integer;
 begin
@@ -206,20 +206,20 @@ begin
     end;
 end;
 
-procedure TForm1.updateBranchList;
+procedure TmainForm.updateBranchList;
 begin
   cbCurrentBranch.Items:=fGitWhat.branches;
   cbCurrentBranch.ItemIndex:= getCurrentBranchIndex(cbCurrentBranch.Items);
 end;
 
-function TForm1.getCurrentBranchIndex(branchList: TStrings): Integer;
+function TmainForm.getCurrentBranchIndex(branchList: TStrings): Integer;
 begin
   for result:=0 to pred(branchList.Count) do
     if branchList[result].Substring(0,1) = '*' then exit;
   result:=-1;
 end;
 
-function TForm1.extractJSON(inputData: TJSONData; objectName: string;
+function TmainForm.extractJSON(inputData: TJSONData; objectName: string;
   outputList: TStringlist; whitespace: string): TStringlist;
 var
   object_type: string;

@@ -170,6 +170,8 @@ begin
       repoNode.AppendChild(createNode('last-used',DateToISO8601(fRepositories.Data[index].lastUsed)));
       reposNode.AppendChild(repoNode);
       end;
+    //Settings section. Want this to be kind of open ended so we can add new ones without breaking existing
+
     end;
 end;
 

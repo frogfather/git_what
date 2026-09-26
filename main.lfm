@@ -1,9 +1,9 @@
-object Form1: TForm1
+object mainForm: TmainForm
   Left = 301
   Height = 567
   Top = 147
   Width = 1117
-  Caption = 'Main'
+  Caption = 'GitWhat'
   ClientHeight = 567
   ClientWidth = 1117
   OnDestroy = FormDestroy

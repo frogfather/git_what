@@ -42,7 +42,7 @@
       <Unit>
         <Filename Value="main.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="Form1"/>
+        <ComponentName Value="mainForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>
@@ -105,11 +105,16 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="settings.pas"/>
+        <Filename Value="settingsform.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="fSettings"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <UnitName Value="settingsForm"/>
+      </Unit>
+      <Unit>
+        <Filename Value="setting.pas"/>
+        <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
   </ProjectOptions>
