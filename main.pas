@@ -17,7 +17,6 @@ type
   TForm1 = class(TForm)
     bCodeDirectory: TButton;
     bSave: TButton;
-    bTest: TButton;
     cbCurrentRepo: TComboBox;
     cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
@@ -45,9 +44,6 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure gitBranchViewChange(Sender: TObject);
-    procedure PageControl1Change(Sender: TObject);
-    procedure tsSettingsContextPopup(Sender: TObject; MousePos: TPoint;
-      var Handled: Boolean);
   private
     fGitWhat: TGitWhat;
     fHighlighter:TSynPositionHighlighter;
@@ -142,23 +138,14 @@ begin
     end;
 end;
 
-procedure TForm1.PageControl1Change(Sender: TObject);
-begin
-
-end;
-
-procedure TForm1.tsSettingsContextPopup(Sender: TObject; MousePos: TPoint;
-  var Handled: Boolean);
-begin
-
-end;
-
+//Event fired if the code directory is changed.
 procedure TForm1.onCodeDirectoryChanged(sender: TObject);
   begin
   eCodeDirectory.Text:=fGitWhat.codeDirectory;
   eCodeDirectory.Font.Color:=clBlack;
 end;
 
+//Event fired if the list of repos has changed
 procedure TForm1.onReposChanged(sender: TObject);
 var
   currentRepoName:String;
@@ -196,6 +183,8 @@ begin
       lbLog.items.add('Switched to branch '+cbCurrentBranch.Text);
       end
     else
+      //Could have setting to automatically stash before switch and apply any
+      //stashed changes when switching back
       begin
       lbLog.items.add('Couldn''t switch branch. Response was: '+errors[0]);
       updateBranchList;

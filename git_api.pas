@@ -79,6 +79,7 @@ end;
 function TGitApi.changeBranch(branchName: string): TGitResponse;
 begin
   resetParams;
+
   params.Add('git checkout '+branchName);
   result:= TGitResponse.Create(executeCommand);
 end;
