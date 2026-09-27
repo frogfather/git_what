@@ -6,9 +6,9 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  ComCtrls, FileUtilities, Fileutil, SynEdit, SynHighlighterPosition,
+  ComCtrls, ValEdit, FileUtilities, Fileutil, SynEdit, SynHighlighterPosition,
   SynEditHighlighter, process, gitManager, gitResponse, fpjson,
-  jsonparser, TypInfo,pivotalApi, Types;
+  jsonparser, TypInfo,pivotalApi,setting, Types;
 
 type
 
@@ -20,9 +20,7 @@ type
     cbCurrentRepo: TComboBox;
     cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
-    eTrackerToken: TEdit;
     lbRepoStatus: TListBox;
-    lTrackerToken: TLabel;
     lCurrentBranch: TLabel;
     lCurrentRepo: TLabel;
     lCodeDirectory: TLabel;
@@ -37,6 +35,7 @@ type
     spLog: TSplitter;
     tsMain: TTabSheet;
     tsSettings: TTabSheet;
+    vleSettings: TValueListEditor;
     procedure bSaveClick(Sender: TObject);
     procedure cbCurrentBranchSelect(Sender: TObject);
     procedure cbCurrentRepoSelect(Sender: TObject);
@@ -44,6 +43,7 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure gitBranchViewChange(Sender: TObject);
+    procedure PageControl1Change(Sender: TObject);
   private
     fGitWhat: TGitWhat;
     fHighlighter:TSynPositionHighlighter;
@@ -56,6 +56,7 @@ type
     procedure updateBranchList;
     function getCurrentBranchIndex(branchList:TStrings):Integer;
     function extractJSON(inputData: TJSONData; objectName: string; outputList: TStringlist; whitespace: string = ''): TStringlist;
+    procedure setInitialSettings;
   public
 
   end;
@@ -84,7 +85,7 @@ end;
 procedure TmainForm.bSaveClick(Sender: TObject);
 begin
   //filename hard coded for the moment
-  writeStream(getUsrDir('johncampbell')+configFileName, 'X-TrackerToken,'+eTrackerToken.Text);
+
 end;
 
 //Sets the requested repo name on the gitManager.
@@ -135,6 +136,20 @@ begin
   for index:= 0 to pred(gitBranchView.Lines.Count) do
     begin
     fHighlighter.AddToken(index,gitBranchView.Lines[index].Length,fAttrTest);
+    end;
+end;
+
+procedure TmainForm.PageControl1Change(Sender: TObject);
+var
+  index: integer;
+begin
+  If PageControl1.ActivePageIndex = 0 then exit;
+  if (fGitWhat.settings.size <> 6) then setInitialSettings;
+  //Now populate the list with the settings
+  vleSettings.Clear;
+  for index:=0 to pred(fGitWhat.settings.size) do
+    begin
+    vleSettings.InsertRow(fGitWhat.settings[index].name,fGitWhat.settings[index].value,true);
     end;
 end;
 
@@ -253,6 +268,17 @@ begin
     'jtBoolean': outputList.Add(whitespace+objectName+': '+booltostr(inputData.AsBoolean));
   end;
   result:=outputList;
+end;
+
+procedure TmainForm.setInitialSettings;
+begin
+  fGitWhat.settings.clear;
+  fGitWhat.settings.push(TSetting.create('Rebase all repos on load','true',TDataType.booleanType));
+  fGitWhat.settings.push(TSetting.create('Rebase all branches when switching repo','true',TDataType.booleanType));
+  fGitWhat.settings.push(TSetting.create('Stash before rebasing','true',TDataType.booleanType));
+  fGitWhat.settings.push(TSetting.create('Unstash after rebasing','true',TDataType.booleanType));
+  fGitWhat.settings.push(TSetting.create('Stash before switching branches','true',TDataType.booleanType));
+  fGitWhat.settings.push(TSetting.create('Unstash after switching branches','true',TDataType.booleanType));
 end;
 
 end.

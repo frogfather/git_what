@@ -5,8 +5,8 @@ unit gitManager;
 interface
 
 uses
-  Classes, SysUtils,fileUtil,repo,fgl,dateUtils,
-  git_api, gitResponse,xml_doc_handler,laz2_DOM,branch,pvProject,pivotalApi;
+  Classes, SysUtils,fileUtil,repo,fgl,dateUtils,setting,
+  git_api, gitResponse,xml_doc_handler,laz2_DOM,branch,pvProject,pivotalApi,typinfo;
 type
   
   { TGitWhat }
@@ -19,6 +19,7 @@ type
     fNewRepositories: specialize TFPGMap<string,TRepo>;
     fRepositories: specialize TFPGMap<string,TRepo>;
     fExclusions:TStringlist;
+    fSettings:TSettings;
     fCurrentDirectoryChanged:TNotifyEvent;
     fRepositoriesChanged:TNotifyEvent;
     fCurrentRepoChanged:TNotifyEvent;
@@ -30,6 +31,7 @@ type
     procedure addNewRepo(repoName: string; repo:TRepo);
     procedure addRepo(repoName: string; repo_: TRepo);
     procedure deleteRepo(repoName: string);
+    procedure addSetting(setting_:TSetting);
     procedure setCodeDirectory(codeDirectory_:string);
     procedure setCurrentRepoName(repoName_:string);
     procedure setCurrentBranchName(branchName_: string);
@@ -59,6 +61,7 @@ type
     property currentBranchName: string read GetcurrentBranchName write SetcurrentBranchName;
     property branches: TStringList read Getbranches;
     property status: TStringList read GetStatus;
+    property settings: TSettings read fSettings write fSettings;
   end;
 
 implementation
@@ -75,6 +78,7 @@ begin
   fRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fNewRepositories:= specialize TFPGMap<string,TRepo>.Create;
   fRepositories.Sorted:=true;
+  fSettings:= TSettings.create;
   fExclusions:=TStringlist.Create;
   fExclusions.Add('node_modules');
   fExclusions.Add('lib');
@@ -123,7 +127,7 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
 procedure TGitWhat.toXML;
 var
   index:integer;
-  reposNode,repoNode,branchNode:TDOMNode;
+  reposNode,repoNode,branchNode,settingsNode,settingNode:TDOMNode;
   attributes:TStringArray;
   currentBranchForRepo:TBranch;
   currentBranchNameForRepo:string;
@@ -137,20 +141,6 @@ begin
     initializeDoc;
     addNode('','code-directory',codeDirectory);
     addNode('','current-repo',currentRepoName);
-    //need to record pivotal projects
-    //<pivotal-projects>
-    //  <pivotal-project>
-    //    <id>project-id</id>
-    //    <name>project-name</name>
-    //    <stories>
-    //    <story>
-    //    <id>story-id</id>
-    //    <name>story-name</name>
-    //    can get other info as required
-    //    </story>
-    //    </stories>
-    //  </pivotal-project>
-    //</pivotal-projects>
     reposNode:=addNode('','repos');
     for index:= 0 to pred(fRepositories.Count) do
       begin
@@ -171,18 +161,28 @@ begin
       reposNode.AppendChild(repoNode);
       end;
     //Settings section. Want this to be kind of open ended so we can add new ones without breaking existing
-
+    settingsNode:=addNode('','settings');
+    for index:=0 to pred(fSettings.size) do
+      begin
+      settingNode:=createNode('setting','');
+      settingNode.AppendChild(createNode('name',fSettings[index].name));
+      settingNode.AppendChild(createNode('dataType',GetEnumName(TypeInfo(TDataType), integer(fSettings[index].dataType))));
+      settingNode.AppendChild(createNode('value',fSettings[index].value));
+      settingsNode.AppendChild(settingNode);
+      end;
     end;
 end;
 
 procedure TGitWhat.fromXML;
 var
-  reposNode,childNode,repoCurrentBranchNode:TDOMNode;
-  repoEnumerator:TDomNodeEnumerator;
+  reposNode,childNode,repoCurrentBranchNode,settingsNode,settingNode,repoSettingTypeNode:TDOMNode;
+  repoEnumerator,settingEnumerator:TDomNodeEnumerator;
   repoPath:string;
-  repoPivotal:TPivotal;
   repoLastUsed:TDateTime;
   repoCurrentBranch:TBranch;
+  settingName,settingValue:string;
+  settingType:TDataType;
+  code:integer;
 begin
   codeDirectory:= xmlDocumentHandler.getNodeTextValue('code-directory');
   currentRepoName:= xmlDocumentHandler.getNodeTextValue('current-repo');
@@ -204,6 +204,27 @@ begin
           repoCurrentBranchNode.ChildNodes[0].TextContent)
         end;
       addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch)) //pivotal project  as last param
+      end;
+    end;
+  settingsNode:=xmlDocumentHandler.getNode('settings');
+  if (settingsNode <> Nil) and (settingsNode.GetChildCount > 0) then
+    begin
+    settingEnumerator:= settingsNode.GetEnumerator;
+    while settingEnumerator.MoveNext do
+      begin
+      childNode:=settingEnumerator.Current;
+      //create a setting from this
+      settingName:=childNode.ChildNodes.Item[0].TextContent;
+      repoSettingTypeNode:=childNode.ChildNodes.Item[1];
+      settingValue:=childNode.ChildNodes.Item[2].TextContent;
+      if (repoSettingTypeNode.GetChildCount > 0) then
+        begin
+        val(repoSettingTypeNode.ChildNodes[0].TextContent,settingType,code);
+        end;
+      if (settingName <> '') and (code = 0) and (settingValue <> '') then
+        begin
+        addSetting(TSetting.create(settingName,settingValue,settingType));
+        end;
       end;
     end;
 end;
@@ -304,6 +325,12 @@ begin
   if (repoIndex > -1) then
      fRepositories.Delete(repoIndex);
 end;
+
+procedure TGitWhat.addSetting(setting_: TSetting);
+begin
+  fSettings.push(setting_);
+end;
+
 { Actions that change state }
 
 procedure TGitWhat.setCodeDirectory(codeDirectory_: string);

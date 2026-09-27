@@ -12,7 +12,7 @@ uses
   Interfaces, // this includes the LCL widgetset
   Forms, main, fileUtilities, config_xml_doc_handler, repo, gitManager, git_api,
   gitResponseInterface, gitResponse, xml_doc_handler, pvproject, branch,
-  httpClient, pivotalApi, header, settingsForm, setting;
+  httpClient, pivotalApi, header, setting;
 
 {$R *.res}
 
@@ -21,7 +21,6 @@ begin
   Application.Scaled:=True;
   Application.Initialize;
   Application.CreateForm(TmainForm, mainForm);
-  Application.CreateForm(TfSettings, fSettings);
   Application.Run;
 end.
 
