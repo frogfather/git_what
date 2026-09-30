@@ -17,6 +17,7 @@ type
   TmainForm = class(TForm)
     bCodeDirectory: TButton;
     bSave: TButton;
+    Button1: TButton;
     cbCurrentRepo: TComboBox;
     cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
@@ -37,6 +38,7 @@ type
     tsSettings: TTabSheet;
     vleSettings: TValueListEditor;
     procedure bSaveClick(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
     procedure cbCurrentBranchSelect(Sender: TObject);
     procedure cbCurrentRepoSelect(Sender: TObject);
     procedure eCodeDirectoryDblClick(Sender: TObject);
@@ -86,6 +88,12 @@ procedure TmainForm.bSaveClick(Sender: TObject);
 begin
   //filename hard coded for the moment
 
+end;
+
+procedure TmainForm.Button1Click(Sender: TObject);
+begin
+  //Add an exclusion for testing
+  fGitWhat.currentrepo.addExclusion(fGitWhat.currentBranchName);
 end;
 
 //Sets the requested repo name on the gitManager.

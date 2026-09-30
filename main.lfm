@@ -78,12 +78,21 @@ object mainForm: TmainForm
     end
     object lbRepoStatus: TListBox
       Left = 32
-      Height = 256
+      Height = 216
       Top = 200
       Width = 154
       Anchors = [akTop, akLeft, akRight]
       ItemHeight = 0
       TabOrder = 3
+    end
+    object Button1: TButton
+      Left = 70
+      Height = 25
+      Top = 432
+      Width = 75
+      Caption = 'Button1'
+      TabOrder = 4
+      OnClick = Button1Click
     end
   end
   object spMain: TSplitter

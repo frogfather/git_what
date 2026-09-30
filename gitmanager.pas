@@ -126,13 +126,14 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
 
 procedure TGitWhat.toXML;
 var
-  index:integer;
-  reposNode,repoNode,branchNode,mainBranchNode,settingsNode,settingNode:TDOMNode;
+  index,exclusionsIndex:integer;
+  reposNode,repoNode,branchNode,mainBranchNode,exclusionsNode,exclusionNode,settingsNode,settingNode:TDOMNode;
   attributes:TStringArray;
   currentBranchForRepo,mainBranch:TBranch;
   currentBranchNameForRepo,mainBranchName:string;
 begin
   //create an xml document based on the gitManager class
+  attributes:=TStringArray.create;
   setLength(attributes,4);
   attributes[0]:='name';
   attributes[2]:='pivotal-project';
@@ -164,6 +165,17 @@ begin
       mainBranchNode:=createNode('main-branch');
       mainBranchNode.AppendChild(createNode('main-branch-name',mainBranchName));
       repoNode.AppendChild(mainBranchNode);
+      //Add exclude from rebase branches
+      if (fRepositories.Data[index].exclusions.Count > 0) then
+        begin
+        exclusionsNode:=createNode('exclusions','');
+        for exclusionsIndex := 0 to pred(fRepositories.Data[index].exclusions.Count) do
+          begin
+          exclusionNode:=createNode('exclusion',fRepositories.Data[index].exclusions[exclusionsIndex]);
+          exclusionsNode.AppendChild(exclusionNode);
+          end;
+        repoNode.AppendChild(exclusionsNode);
+        end;
       reposNode.AppendChild(repoNode);
       end;
     //Settings
@@ -181,17 +193,19 @@ end;
 
 procedure TGitWhat.fromXML;
 var
-  reposNode,childNode,repoCurrentBranchNode,mainBranchNode,settingsNode,settingNode,repoSettingTypeNode:TDOMNode;
+  reposNode,childNode,repoCurrentBranchNode,mainBranchNode,exclusionsNode,settingsNode,settingNode,repoSettingTypeNode:TDOMNode;
   repoEnumerator,settingEnumerator:TDomNodeEnumerator;
   repoPath:string;
   repoLastUsed:TDateTime;
   repoCurrentBranch,mainBranch:TBranch;
+  exclusionsList:TStringList;
   settingName,settingValue:string;
   settingType:TDataType;
-  code:integer;
+  exclusionsIndex,code:integer;
 begin
   codeDirectory:= xmlDocumentHandler.getNodeTextValue('code-directory');
   currentRepoName:= xmlDocumentHandler.getNodeTextValue('current-repo');
+  exclusionsList:=TStringlist.Create;
   //TODO there are probably build in methods on TXMLDocument that do this better
   reposNode:= xmlDocumentHandler.getNode('repos');
   if (reposNode <> Nil) and (reposNode.GetChildCount > 0) then
@@ -199,6 +213,7 @@ begin
     repoEnumerator:= reposNode.GetEnumerator;
     while repoEnumerator.MoveNext do
       begin
+      exclusionsList.Clear;
       childNode:=repoEnumerator.Current;
       //create a repo from this
       repoPath:=childNode.ChildNodes.Item[0].TextContent;
@@ -215,7 +230,17 @@ begin
         mainBranch:=TBranch.create(
           mainBranchNode.ChildNodes[0].TextContent);
         end;
-      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch))
+      //Exclusions (should be stringlist not list of branches)
+      exclusionsNode:=childNode.ChildNodes.Item[4];
+      if (exclusionsNode <> nil)and(exclusionsNode.GetChildCount > 0) then
+        begin
+        for exclusionsIndex:= 0 to pred(exclusionsNode.GetChildCount) do
+          begin
+          exclusionsList.Add(exclusionsNode.ChildNodes[0].TextContent);
+          end;
+        end;
+      //Update constructor to take main branch and exclusions
+      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch,-1,mainBranch,exclusionsList))
       end;
     end;
   settingsNode:=xmlDocumentHandler.getNode('settings');
