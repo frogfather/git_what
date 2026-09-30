@@ -127,10 +127,10 @@ procedure TGitWhat.doRescanRepos(codeDir: String);
 procedure TGitWhat.toXML;
 var
   index:integer;
-  reposNode,repoNode,branchNode,settingsNode,settingNode:TDOMNode;
+  reposNode,repoNode,branchNode,mainBranchNode,settingsNode,settingNode:TDOMNode;
   attributes:TStringArray;
-  currentBranchForRepo:TBranch;
-  currentBranchNameForRepo:string;
+  currentBranchForRepo,mainBranch:TBranch;
+  currentBranchNameForRepo,mainBranchName:string;
 begin
   //create an xml document based on the gitManager class
   setLength(attributes,4);
@@ -139,6 +139,7 @@ begin
   with xmlDocumentHandler do
     begin
     initializeDoc;
+    //Repos
     addNode('','code-directory',codeDirectory);
     addNode('','current-repo',currentRepoName);
     reposNode:=addNode('','repos');
@@ -153,14 +154,19 @@ begin
       repoNode:=createNode('repo','',attributes);
       repoNode.AppendChild(createNode('path',fRepositories.Data[index].path));
       branchNode:=createNode('branch','');
-      WriteLn('write branch name '+currentBranchNameForRepo);
       branchNode.AppendChild(createNode('branch-name', currentBranchNameForRepo));
       repoNode.AppendChild(branchNode);
-      WriteLn('write branch last used '+DateToISO8601(fRepositories.Data[index].lastUsed));
       repoNode.AppendChild(createNode('last-used',DateToISO8601(fRepositories.Data[index].lastUsed)));
+      mainBranch:=fRepositories.Data[index].mainBranch;
+      if (mainBranch = nil)
+        then mainBranchName:= ''
+        else mainBranchName:= mainBranch.name;
+      mainBranchNode:=createNode('main-branch');
+      mainBranchNode.AppendChild(createNode('main-branch-name',mainBranchName));
+      repoNode.AppendChild(mainBranchNode);
       reposNode.AppendChild(repoNode);
       end;
-    //Settings section. Want this to be kind of open ended so we can add new ones without breaking existing
+    //Settings
     settingsNode:=addNode('','settings');
     for index:=0 to pred(fSettings.size) do
       begin
@@ -175,11 +181,11 @@ end;
 
 procedure TGitWhat.fromXML;
 var
-  reposNode,childNode,repoCurrentBranchNode,settingsNode,settingNode,repoSettingTypeNode:TDOMNode;
+  reposNode,childNode,repoCurrentBranchNode,mainBranchNode,settingsNode,settingNode,repoSettingTypeNode:TDOMNode;
   repoEnumerator,settingEnumerator:TDomNodeEnumerator;
   repoPath:string;
   repoLastUsed:TDateTime;
-  repoCurrentBranch:TBranch;
+  repoCurrentBranch,mainBranch:TBranch;
   settingName,settingValue:string;
   settingType:TDataType;
   code:integer;
@@ -198,12 +204,18 @@ begin
       repoPath:=childNode.ChildNodes.Item[0].TextContent;
       repoCurrentBranchNode:=childNode.ChildNodes.Item[1];
       repoLastUsed:= ISO8601ToDate(childNode.ChildNodes.Item[2].TextContent);
+      mainBranchNode:=childNode.ChildNodes.Item[3];
       if (repoCurrentBranchNode.GetChildCount > 0) then
         begin
         repoCurrentBranch:=TBranch.Create(
           repoCurrentBranchNode.ChildNodes[0].TextContent)
         end;
-      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch)) //pivotal project  as last param
+      if (mainBranchNode <> nil)and(mainBranchNode.GetChildCount > 0) then
+        begin
+        mainBranch:=TBranch.create(
+          mainBranchNode.ChildNodes[0].TextContent);
+        end;
+      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch))
       end;
     end;
   settingsNode:=xmlDocumentHandler.getNode('settings');
