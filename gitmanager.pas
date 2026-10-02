@@ -204,7 +204,6 @@ var
   exclusionsIndex,code:integer;
 begin
   codeDirectory:= xmlDocumentHandler.getNodeTextValue('code-directory');
-  currentRepoName:= xmlDocumentHandler.getNodeTextValue('current-repo');
   exclusionsList:=TStringlist.Create;
   //TODO there are probably build in methods on TXMLDocument that do this better
   reposNode:= xmlDocumentHandler.getNode('repos');
@@ -264,6 +263,7 @@ begin
         end;
       end;
     end;
+  currentRepoName:= xmlDocumentHandler.getNodeTextValue('current-repo');
 end;
 
 function TGitWhat.getRepoNames: TStringlist;
