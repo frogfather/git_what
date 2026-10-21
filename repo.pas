@@ -38,7 +38,7 @@ type
     procedure removeExclusion(exclusion:String);
     property path: string read fPath write setPath;
     property lastUsed: TDateTime read fLastUsed write setLastUsed;
-    property mainBranch: TBranch read fMainBranch;
+    property mainBranch: TBranch read fMainBranch write fMainBranch;
     property pivotalProjectId: integer read fPivotalProjectId;
     property hasPivotalProject:boolean read fHasPivotalProject;
     property currentBranch: TBranch read fCurrentBranch;

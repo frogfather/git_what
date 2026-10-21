@@ -56,7 +56,9 @@ type
     function saveToFile(fileName:string):boolean;
     function loadFromFile(fileName:string):boolean;
     property codeDirectory: string read fCurrentDirectory write setCodeDirectory;
+    //The requested current repo. Changing this property will cause an attempt to switch to that repo
     property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
+    //The actual selected repo. Should only be set if we have successfully switched to that repo.
     property currentrepo: TRepo read getCurrentrepo;
     property currentBranchName: string read GetcurrentBranchName write SetcurrentBranchName;
     property branches: TStringList read Getbranches;
@@ -380,7 +382,7 @@ begin
     fCurrentDirectoryChanged(self);
   end;
 end;
-
+//Setting the property currentRepoName causes an attempt to switch to that repo
 procedure TGitWhat.setCurrentRepoName(repoName_: string);
 var
   repoIndex:integer;

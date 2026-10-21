@@ -66,6 +66,7 @@ object mainForm: TmainForm
       Anchors = [akTop, akLeft, akRight]
       ItemHeight = 19
       TabOrder = 2
+      OnMouseDown = cbCurrentBranchMouseDown
       OnSelect = cbCurrentBranchSelect
     end
     object lCurrentBranch: TLabel
@@ -76,23 +77,28 @@ object mainForm: TmainForm
       Caption = 'CurrentBranch'
       ParentColor = False
     end
-    object lbRepoStatus: TListBox
+    object eBaseBranch: TEdit
       Left = 32
-      Height = 216
+      Height = 22
+      Hint = 'Double click to change'
       Top = 200
-      Width = 154
+      Width = 160
       Anchors = [akTop, akLeft, akRight]
-      ItemHeight = 0
+      Font.Color = clBlack
+      ParentFont = False
+      ParentShowHint = False
+      ReadOnly = True
+      ShowHint = True
       TabOrder = 3
+      OnDblClick = eBaseBranchDblClick
     end
-    object Button1: TButton
-      Left = 70
-      Height = 25
-      Top = 432
+    object lBaseBranch: TLabel
+      Left = 40
+      Height = 16
+      Top = 184
       Width = 75
-      Caption = 'Button1'
-      TabOrder = 4
-      OnClick = Button1Click
+      Caption = 'Base branch'
+      ParentColor = False
     end
   end
   object spMain: TSplitter

@@ -17,12 +17,12 @@ type
   TmainForm = class(TForm)
     bCodeDirectory: TButton;
     bSave: TButton;
-    Button1: TButton;
     cbCurrentRepo: TComboBox;
     cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
-    lbRepoStatus: TListBox;
+    eBaseBranch: TEdit;
     lCurrentBranch: TLabel;
+    lBaseBranch: TLabel;
     lCurrentRepo: TLabel;
     lCodeDirectory: TLabel;
     lbLog: TListBox;
@@ -38,9 +38,11 @@ type
     tsSettings: TTabSheet;
     vleSettings: TValueListEditor;
     procedure bSaveClick(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
+    procedure cbCurrentBranchMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
     procedure cbCurrentBranchSelect(Sender: TObject);
     procedure cbCurrentRepoSelect(Sender: TObject);
+    procedure eBaseBranchDblClick(Sender: TObject);
     procedure eCodeDirectoryDblClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
@@ -90,10 +92,23 @@ begin
 
 end;
 
-procedure TmainForm.Button1Click(Sender: TObject);
+procedure TmainForm.cbCurrentBranchMouseDown(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
-  //Add an exclusion for testing
-  fGitWhat.currentrepo.addExclusion(fGitWhat.currentBranchName);
+  if (Button = TMouseButton.mbRight) then
+     begin
+     //If it's in the exclusions list then remove it after confirmation
+     //otherwise add it
+     If (fGitWhat.currentrepo.exclusions.IndexOf(fGitWhat.currentrepo.currentBranch.name) > -1) then
+        begin
+        if MessageDlg('Confirmation','Include this branch in a rebase?',mtConfirmation,[mbYes,mbNo],'') = mrYes then
+           fGitWhat.currentrepo.removeExclusion(fGitWhat.currentrepo.currentBranch.name);
+        end else
+        begin
+        if MessageDlg('Confirmation','Exclude this branch from a rebase?',mtConfirmation,[mbYes,mbNo],'') = mrYes then
+           fGitWhat.currentrepo.addExclusion(fGitWhat.currentrepo.currentBranch.name);
+        end;
+     end;
 end;
 
 //Sets the requested repo name on the gitManager.
@@ -102,6 +117,19 @@ end;
 procedure TmainForm.cbCurrentRepoSelect(Sender: TObject);
 begin
   fGitwhat.currentRepoName:=cbCurrentRepo.Text;
+end;
+
+procedure TmainForm.eBaseBranchDblClick(Sender: TObject);
+begin
+  //Set the base branch to the currently selected one after confirmation
+  If (eBaseBranch.Text = '') or (eBaseBranch.Text <> fGitWhat.currentrepo.currentBranch.name) then
+     begin
+     if MessageDlg('Confirmation','Set '+fGitWhat.currentrepo.currentBranch.name+' as the base branch?',mtConfirmation,[mbYes,mbNo],'') = mrYes then
+        begin
+        fGitWhat.currentrepo.mainBranch:=fGitWhat.currentRepo.currentBranch;
+        eBaseBranch.Text:=fGitWhat.currentrepo.mainBranch.name;
+        end;
+     end;
 end;
 
 procedure TmainForm.eCodeDirectoryDblClick(Sender: TObject);
@@ -184,8 +212,10 @@ procedure TmainForm.onCurrentRepoChanged(sender: TObject);
 begin
   updateBranchList;
   cbCurrentBranchSelect(self);
-  lbRepoStatus.items:=fGitWhat.currentrepo.status;
-  lbLog.items.add('Switched to repo '+cbCurrentRepo.Text+' - branch '+cbCurrentBranch.Text);
+  if (fGitWhat.currentrepo.mainBranch <> nil) then
+     eBaseBranch.Text:=fGitWhat.currentrepo.mainBranch.name
+  else eBaseBranch.Text:='';
+  lbLog.items.add('Switched to repo '+fGitWhat.currentRepoName+' - branch '+cbCurrentBranch.Text);
 end;
 
 //Event fired if the gitManager has successfully switched to a new branch.
