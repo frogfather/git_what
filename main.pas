@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
   ComCtrls, ValEdit, FileUtilities, Fileutil, SynEdit, SynHighlighterPosition,
   SynEditHighlighter, process, gitManager, gitResponse, fpjson,
-  jsonparser, TypInfo,pivotalApi,setting, Types;
+  jsonparser, TypInfo,pivotalApi,setting,branch, Types;
 
 type
 
@@ -56,6 +56,7 @@ type
     procedure onReposChanged(sender:TObject);
     procedure onCurrentRepoChanged(sender:TObject);
     procedure onCurrentBranchChanged(sender:TObject);
+    procedure onBaseBranchChanged(sender:TObject);
     procedure loadNames(currentRepoName:string);
     procedure updateBranchList;
     function getCurrentBranchIndex(branchList:TStrings):Integer;
@@ -125,10 +126,7 @@ begin
   If (eBaseBranch.Text = '') or (eBaseBranch.Text <> fGitWhat.currentrepo.currentBranch.name) then
      begin
      if MessageDlg('Confirmation','Set '+fGitWhat.currentrepo.currentBranch.name+' as the base branch?',mtConfirmation,[mbYes,mbNo],'') = mrYes then
-        begin
-        fGitWhat.currentrepo.mainBranch:=fGitWhat.currentRepo.currentBranch;
-        eBaseBranch.Text:=fGitWhat.currentrepo.mainBranch.name;
-        end;
+        fGitWhat.baseBranch:=fGitWhat.currentRepo.currentBranch;
      end;
 end;
 
@@ -156,7 +154,8 @@ begin
     @onCodeDirectoryChanged,
     @onReposChanged,
     @onCurrentRepoChanged,
-    @onCurrentBranchChanged);
+    @onCurrentBranchChanged,
+    @onBaseBranchChanged);
   fGitWhat.loadFromFile(getUsrDir('johncampbell')+dataFileName);
   eCodeDirectory.Text:=fGitWhat.codeDirectory;
   cbCurrentRepo.Items:= fGitWhat.getRepoNames;
@@ -243,6 +242,12 @@ begin
       updateBranchList;
       end;
     end;
+end;
+
+procedure TmainForm.onBaseBranchChanged(sender: TObject);
+begin
+  if sender is TBranch then with sender as TBranch do
+  eBaseBranch.Text:=name;
 end;
 
 procedure TmainForm.loadNames(currentRepoName:string);

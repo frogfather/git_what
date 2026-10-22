@@ -24,6 +24,8 @@ type
     fRepositoriesChanged:TNotifyEvent;
     fCurrentRepoChanged:TNotifyEvent;
     fCurrentBranchChanged:TNotifyEvent;
+    fBaseBranchChanged:TNotifyEvent;
+    function getBaseBranch: TBranch;
     function updateRepositories:integer;
     function repoMissingOrUpdated(repoName: string; repo_: TRepo): boolean;
     function getRepoName(path:string):string;
@@ -35,6 +37,7 @@ type
     procedure setCodeDirectory(codeDirectory_:string);
     procedure setCurrentRepoName(repoName_:string);
     procedure setCurrentBranchName(branchName_: string);
+    procedure setBaseBranch(branch_:TBranch);
     procedure rescanRepos;
     procedure doRescanRepos(codeDir: String);
     procedure toXML;
@@ -51,7 +54,8 @@ type
       onCodeDirectoryChanged,
       onReposChanged,
       onCurrentRepoChanged,
-      onCurrentBranchChanged:TNotifyEvent);
+      onCurrentBranchChanged,
+      onBaseBranchChanged:TNotifyEvent);
     function getRepoNames:TStringlist;
     function saveToFile(fileName:string):boolean;
     function loadFromFile(fileName:string):boolean;
@@ -61,6 +65,7 @@ type
     //The actual selected repo. Should only be set if we have successfully switched to that repo.
     property currentrepo: TRepo read getCurrentrepo;
     property currentBranchName: string read GetcurrentBranchName write SetcurrentBranchName;
+    property baseBranch:TBranch read getBaseBranch write setBaseBranch;
     property branches: TStringList read Getbranches;
     property status: TStringList read GetStatus;
     property settings: TSettings read fSettings write fSettings;
@@ -74,7 +79,8 @@ constructor TGitWhat.create(
   onCodeDirectoryChanged,
   onReposChanged,
   onCurrentRepoChanged,
-  onCurrentBranchChanged:TNotifyEvent);
+  onCurrentBranchChanged,
+  onBaseBranchChanged:TNotifyEvent);
 begin
   fCurrentDirectory:='';
   fRepositories:= specialize TFPGMap<string,TRepo>.Create;
@@ -89,6 +95,7 @@ begin
   fRepositoriesChanged:=onReposChanged;
   fCurrentRepoChanged:=onCurrentRepoChanged;
   fCurrentBranchChanged:=onCurrentBranchChanged;
+  fBaseBranchChanged:=onBaseBranchChanged;
   fXMLDocumentHandler:=TXMLDocumentHandler.create;
 end;
 
@@ -321,6 +328,15 @@ begin
     end;
 end;
 
+function TGitWhat.getBaseBranch: TBranch;
+var
+  currRepo:TRepo;
+begin
+  currRepo:=currentRepo;
+  if (currRepo = nil) then exit;
+  result:=currRepo.mainBranch;
+end;
+
 function TGitWhat.repoMissingOrUpdated(repoName: string; repo_: TRepo): boolean;
 var
   foundRepo:TRepo;
@@ -390,19 +406,27 @@ var
   statusResponse:TGitResponse;
   gitApi: TGitApi;
   index:integer;
+  previousPath:String;
+  opFail:boolean;
 begin
+  //If this doesn't work we should switch back to the repo we were in
+  if (currentRepo <> nil) then previousPath:=currentRepo.path else previousPath:='';
+  opFail:=false;
   fRepositories.Find(repoName_, repoIndex);
-  if (repoIndex > 0) and (fCurrentRepoName <> repoName_) then
+  if (repoIndex > -1) and (fCurrentRepoName <> repoName_) then
     begin
     chDir(fRepositories.Data[repoIndex].path);
     fCurrentRepoName:=repoName_;
     gitApi:=TGitApi.create(currentRepo);
     branchResponse:= gitApi.getBranches;
+    if not branchResponse.success then opFail:=true;
     if branchResponse.success
       then currentRepo.updateBranches(branchResponse.results);
     statusResponse:= gitApi.getStatus;
-    if statusResponse.success
-      then currentRepo.setRepoStatus(statusResponse.results);
+    if not statusResponse.success then opFail:=true;
+    if statusResponse.success then
+       currentRepo.setRepoStatus(statusResponse.results);
+    if opFail and (previousPath <> '') then chDir(previousPath);
     fCurrentRepoChanged(self);
     end;
 end;
@@ -437,6 +461,18 @@ begin
     fCurrentBranchChanged(gitApi.logWithDecoration);
     end;
 end;
+
+procedure TGitWhat.setBaseBranch(branch_: TBranch);
+var
+  currRepo:TRepo;
+begin
+  currRepo:=currentRepo;
+  if (currRepo = nil) then exit;
+  //Branch should already exist - should we check?
+  currRepo.mainBranch:=branch_;
+  fBaseBranchChanged(currRepo.mainBranch);
+end;
+
 { Commands that don't change state }
 
 function TGitWhat.getCurrentRepo: TRepo;
@@ -445,7 +481,7 @@ var
 begin
   result:=nil;
   fRepositories.Find(fCurrentRepoName, currentRepoIndex);
-  if (currentRepoIndex > 0) then result:= fRepositories.Data[currentRepoIndex];
+  if (currentRepoIndex > -1) then result:= fRepositories.Data[currentRepoIndex];
 end;
 
 function TGitWhat.getBranches: TStringlist;
