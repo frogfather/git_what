@@ -163,9 +163,6 @@ begin
       attributes[3]:=fRepositories.Data[index].pivotalProjectId.ToString;
       repoNode:=createNode('repo','',attributes);
       repoNode.AppendChild(createNode('path',fRepositories.Data[index].path));
-      branchNode:=createNode('branch','');
-      branchNode.AppendChild(createNode('branch-name', currentBranchNameForRepo));
-      repoNode.AppendChild(branchNode);
       repoNode.AppendChild(createNode('last-used',DateToISO8601(fRepositories.Data[index].lastUsed)));
       mainBranch:=fRepositories.Data[index].mainBranch;
       if (mainBranch = nil)
@@ -202,11 +199,11 @@ end;
 
 procedure TGitWhat.fromXML;
 var
-  reposNode,childNode,repoCurrentBranchNode,mainBranchNode,exclusionsNode,settingsNode,settingNode,repoSettingTypeNode:TDOMNode;
+  reposNode,childNode,mainBranchNode,exclusionsNode,settingsNode,settingNode,repoSettingTypeNode:TDOMNode;
   repoEnumerator,settingEnumerator:TDomNodeEnumerator;
   repoPath:string;
   repoLastUsed:TDateTime;
-  repoCurrentBranch,mainBranch:TBranch;
+  mainBranch:TBranch;
   exclusionsList:TStringList;
   settingName,settingValue:string;
   settingType:TDataType;
@@ -225,14 +222,8 @@ begin
       childNode:=repoEnumerator.Current;
       //create a repo from this
       repoPath:=childNode.ChildNodes.Item[0].TextContent;
-      repoCurrentBranchNode:=childNode.ChildNodes.Item[1];
-      repoLastUsed:= ISO8601ToDate(childNode.ChildNodes.Item[2].TextContent);
-      mainBranchNode:=childNode.ChildNodes.Item[3];
-      if (repoCurrentBranchNode.GetChildCount > 0) then
-        begin
-        repoCurrentBranch:=TBranch.Create(
-          repoCurrentBranchNode.ChildNodes[0].TextContent)
-        end;
+      repoLastUsed:= ISO8601ToDate(childNode.ChildNodes.Item[1].TextContent);
+      mainBranchNode:=childNode.ChildNodes.Item[2];
       if (mainBranchNode <> nil)and(mainBranchNode.GetChildCount > 0) then
         begin
         mainBranch:=TBranch.create(
@@ -248,7 +239,7 @@ begin
           end;
         end;
       //Update constructor to take main branch and exclusions
-      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,repoCurrentBranch,-1,mainBranch,exclusionsList))
+      addRepo(getRepoName(repoPath),TRepo.create(repoPath,repoLastUsed,-1,mainBranch,exclusionsList))
       end;
     end;
   settingsNode:=xmlDocumentHandler.getNode('settings');
@@ -295,9 +286,12 @@ end;
 
 function TGitWhat.loadFromFile(fileName: string): boolean;
 begin
-  xmlDocumentHandler.load(fileName);
-  fromXML;
-  result:=true;
+  result:=false;
+  if (xmlDocumentHandler.load(fileName)) then
+     begin
+     fromXML;
+     result:=true;
+     end;
 end;
 
 function TGitWhat.updateRepositories: integer;
@@ -410,6 +404,7 @@ var
   opFail:boolean;
 begin
   //If this doesn't work we should switch back to the repo we were in
+  if (repoName_ = '') then exit;
   if (currentRepo <> nil) then previousPath:=currentRepo.path else previousPath:='';
   opFail:=false;
   fRepositories.Find(repoName_, repoIndex);
@@ -428,6 +423,7 @@ begin
        currentRepo.setRepoStatus(statusResponse.results);
     if opFail and (previousPath <> '') then chDir(previousPath);
     fCurrentRepoChanged(self);
+    fCurrentBranchChanged(gitApi.logWithDecoration);
     end;
 end;
 

@@ -29,7 +29,7 @@ type
     procedure removeBranch(branch:TBranch);
     function findOrCreateBranch(branchName_: string; addToBranchlistIfNotFound:Boolean = false):TBranch;
     public
-    constructor create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch = nil; pivotalProjectId_:integer = -1; mainBranch_:TBranch = nil;exclusions:TStringList = nil);
+    constructor create(path_:string; lastUsed_:TDateTime;pivotalProjectId_:integer = -1; mainBranch_:TBranch = nil;exclusions:TStringList = nil);
     procedure setCurrentBranch(branchName:string);
     procedure setMainBranch(branchName: string);
     procedure updateBranches(branchList:TStringList);
@@ -140,16 +140,13 @@ begin
   if (fExclusions.IndexOf(exclusion) > -1) then fExclusions.Delete(fExclusions.IndexOf(exclusion));
 end;
 
-constructor TRepo.create(path_:string; lastUsed_:TDateTime; currentBranch_:TBranch;
+constructor TRepo.create(path_:string; lastUsed_:TDateTime;
             pivotalProjectId_:integer; mainBranch_: TBranch;exclusions:TStringList);
 begin
   fPath:=path_;
   fLastUsed:=lastUsed_;
   fPivotalProjectId:=pivotalProjectId_;
-  fCurrentBranch:=currentBranch_;
   fStatus:=TStringlist.create;
-  if (currentBranch_ <> nil) then
-  fBranches.push(currentBranch_);
   if (mainBranch_ <> nil) then
   fMainBranch:=mainBranch_;
   fExclusions:=TStringList.Create;

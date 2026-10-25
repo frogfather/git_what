@@ -156,12 +156,14 @@ begin
     @onCurrentRepoChanged,
     @onCurrentBranchChanged,
     @onBaseBranchChanged);
-  fGitWhat.loadFromFile(getUsrDir('johncampbell')+dataFileName);
-  eCodeDirectory.Text:=fGitWhat.codeDirectory;
-  cbCurrentRepo.Items:= fGitWhat.getRepoNames;
-  cbCurrentRepo.ItemIndex:=cbCurrentRepo.items.indexOf(fGitWhat.currentRepoName);
-  updateBranchList;
-  cbCurrentBranchSelect(self);
+  if (fGitWhat.loadFromFile(getUsrDir('johncampbell')+dataFileName)) then
+     begin
+     eCodeDirectory.Text:=fGitWhat.codeDirectory;
+     cbCurrentRepo.Items:= fGitWhat.getRepoNames;
+     cbCurrentRepo.ItemIndex:=cbCurrentRepo.items.indexOf(fGitWhat.currentRepoName);
+     updateBranchList;
+     cbCurrentBranchSelect(self);
+     end;
 end;
 
 procedure TmainForm.gitBranchViewChange(Sender: TObject);

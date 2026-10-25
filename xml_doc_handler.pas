@@ -48,7 +48,7 @@ type
       attributes: TStringArray = nil): TDOMNode;
     function getNodeTextValue(nodeName:string):string;
     function getNodeAttributes(nodeName:string):TDOMNamedNodeMap;
-    procedure load(filename: string);
+    function load(filename: string):boolean;
     procedure save(filename: string);
     property document:TXMLDocument read fDocument write setDocument;
   end;
@@ -57,11 +57,13 @@ type
 implementation
 
 { TXMLDocumentHandler }
-procedure TXMLDocumentHandler.load(filename: string);
+function TXMLDocumentHandler.load(filename: string):boolean;
 begin
   try
+    result:=true;
     if FileExists(filename) then
-    ReadXMLFile(fDocument, filename);
+       ReadXMLFile(fDocument, filename)
+    else result:=false;
     except
       //log an error
     end;
