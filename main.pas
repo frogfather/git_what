@@ -215,6 +215,8 @@ begin
      eBaseBranch.Text:=fGitWhat.currentrepo.mainBranch.name
   else eBaseBranch.Text:='';
   lbLog.items.add('Switched to repo '+fGitWhat.currentRepoName+' - branch '+cbCurrentBranch.Text);
+  lbLog.items.add('Current branch is '+fGitWhat.currentBranchName);
+  if (fGitWhat.baseBranch <> nil) then lbLog.items.add('Base branch is |'+fGitWhat.baseBranch.name+'|');
 end;
 
 //Event fired if the gitManager has successfully switched to a new branch.

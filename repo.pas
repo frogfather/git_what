@@ -76,10 +76,15 @@ procedure TRepo.updateBranches(branchList: TStringList);
 var
   index:integer;
   toRemove:TBranches;
+  currentBranchNameFromList:string;
 begin
   if branchList.Count = 0 then fBranches.clear;
   for index:=0 to pred(branchList.Count) do
+    begin
     addBranch(TBranch.create(branchList[index]));
+    if (branchList[index].StartsWith('*'))
+      then currentBranchNameFromList:=branchList[index];
+    end;
   toRemove:=TBranches.create;
   for index:=0 to pred(fBranches.size) do
     begin
@@ -91,6 +96,9 @@ begin
       for index:= 0 to pred(toRemove.size) do
       removeBranch(toRemove[index]);
     end;
+  //Should set the current branch here because it may have been changed elsewhere
+  if (fCurrentBranch = nil) or (fCurrentBranch.name <> currentBranchNameFromList) then
+    setCurrentBranch(currentBranchNameFromList);
 end;
 
 procedure TRepo.addBranch(branch_: TBranch);
