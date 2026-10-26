@@ -17,6 +17,7 @@ type
   TmainForm = class(TForm)
     bCodeDirectory: TButton;
     bSave: TButton;
+    bRebase: TButton;
     cbCurrentRepo: TComboBox;
     cbCurrentBranch: TComboBox;
     eCodeDirectory: TEdit;
@@ -37,6 +38,7 @@ type
     tsMain: TTabSheet;
     tsSettings: TTabSheet;
     vleSettings: TValueListEditor;
+    procedure bRebaseClick(Sender: TObject);
     procedure bSaveClick(Sender: TObject);
     procedure cbCurrentBranchMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
@@ -91,6 +93,11 @@ procedure TmainForm.bSaveClick(Sender: TObject);
 begin
   //filename hard coded for the moment
 
+end;
+
+procedure TmainForm.bRebaseClick(Sender: TObject);
+begin
+  //Rebase the current branch
 end;
 
 procedure TmainForm.cbCurrentBranchMouseDown(Sender: TObject;
@@ -251,7 +258,11 @@ end;
 procedure TmainForm.onBaseBranchChanged(sender: TObject);
 begin
   if sender is TBranch then with sender as TBranch do
-  eBaseBranch.Text:=name;
+    begin
+    eBaseBranch.Text:=name;
+    bRebase.enabled:=(name <> '');
+    end;
+
 end;
 
 procedure TmainForm.loadNames(currentRepoName:string);

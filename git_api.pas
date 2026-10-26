@@ -26,6 +26,11 @@ type
     function changeBranch(branchName:string):TGitResponse;
     function logWithDecoration:TGitResponse;
     function getStatus:TGitResponse;
+    function getCurrentCommit:TGitResponse;
+    function stash:TGitResponse;
+    function pull(baseBranchName_:String):TGitResponse;
+    function reset(commit:string):TGitResponse;
+    function unstash:TGitResponse;
   end;
 
 implementation
@@ -96,6 +101,38 @@ begin
   resetParams;
   params.Add('git status');
   result:=TGitResponse.create(executeCommand);
+end;
+
+function TGitApi.getCurrentCommit: TGitResponse;
+begin
+  resetParams;
+  params.Add('git log');
+  result:=TGitResponse.create(executeCommand);
+end;
+
+function TGitApi.stash: TGitResponse;
+begin
+  resetParams;
+  params.Add('git stash');
+  result:=TGitResponse.create(executeCommand);
+end;
+
+function TGitApi.pull(baseBranchName_: String): TGitResponse;
+//Need to be able to set remote name to something other than origin
+begin
+  resetParams;
+  params.Add('git pull origin '+baseBranchName_);
+  result:=TGitResponse.create(executeCommand);
+end;
+
+function TGitApi.reset(commit: string): TGitResponse;
+begin
+
+end;
+
+function TGitApi.unstash: TGitResponse;
+begin
+
 end;
 
 

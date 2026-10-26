@@ -59,6 +59,9 @@ type
     function getRepoNames:TStringlist;
     function saveToFile(fileName:string):boolean;
     function loadFromFile(fileName:string):boolean;
+    procedure rebaseCurrentBranch;
+    procedure rebaseAllBranches;
+    procedure rebaseAllRepos;
     property codeDirectory: string read fCurrentDirectory write setCodeDirectory;
     //The requested current repo. Changing this property will cause an attempt to switch to that repo
     property currentRepoName: string read fCurrentRepoName write setCurrentRepoName;
@@ -294,6 +297,25 @@ begin
      end;
 end;
 
+procedure TGitWhat.rebaseCurrentBranch;
+begin
+  //note current commit
+  //note if not clean and stash if required
+  //pull against specified base branch
+  //If it didn't work, rebase --abort
+  //If we had to stash then stash apply
+end;
+
+procedure TGitWhat.rebaseAllBranches;
+begin
+
+end;
+
+procedure TGitWhat.rebaseAllRepos;
+begin
+
+end;
+
 function TGitWhat.updateRepositories: integer;
 var
 index:integer;
@@ -424,6 +446,7 @@ begin
     if opFail and (previousPath <> '') then chDir(previousPath);
     fCurrentRepoChanged(self);
     fCurrentBranchChanged(gitApi.logWithDecoration);
+    fBaseBranchChanged(baseBranch);
     end;
 end;
 
