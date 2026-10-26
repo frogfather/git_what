@@ -26,7 +26,7 @@ type
     function changeBranch(branchName:string):TGitResponse;
     function logWithDecoration:TGitResponse;
     function getStatus:TGitResponse;
-    function getCurrentCommit:TGitResponse;
+    function getLastCommits(limit_:integer = 5):TGitResponse;
     function stash:TGitResponse;
     function pull(baseBranchName_:String):TGitResponse;
     function reset(commit:string):TGitResponse;
@@ -103,10 +103,13 @@ begin
   result:=TGitResponse.create(executeCommand);
 end;
 
-function TGitApi.getCurrentCommit: TGitResponse;
+function TGitApi.getLastCommits(limit_:integer): TGitResponse;
+var
+  logLimit:string;
 begin
+  logLimit:=limit_.ToString;
   resetParams;
-  params.Add('git log');
+  params.Add('git --no-pager log -'+logLimit);
   result:=TGitResponse.create(executeCommand);
 end;
 
@@ -127,12 +130,16 @@ end;
 
 function TGitApi.reset(commit: string): TGitResponse;
 begin
-
+  resetParams;
+  params.Add('git reset hard '+commit);
+  result:=TGitResponse.create(executeCommand);
 end;
 
 function TGitApi.unstash: TGitResponse;
 begin
-
+  resetParams;
+  params.Add('git stash apply');
+  result:=TGitResponse.create(executeCommand);
 end;
 
 

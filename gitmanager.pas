@@ -298,12 +298,23 @@ begin
 end;
 
 procedure TGitWhat.rebaseCurrentBranch;
+var
+  gitApi: TGitApi;
+  logResponse,statusResponse:TGitResponse;
+  currentCommit:String;
+  isClean:Boolean;
 begin
-  //note current commit
   //note if not clean and stash if required
   //pull against specified base branch
   //If it didn't work, rebase --abort
   //If we had to stash then stash apply
+  gitApi:=TGitApi.create(currentRepo);
+  logResponse:=gitApi.getLastCommits;
+  if (logResponse.success) then
+     begin
+     currentCommit:=logResponse.results[0];
+     statusResponse:=gitApi.getStatus;
+     end;
 end;
 
 procedure TGitWhat.rebaseAllBranches;

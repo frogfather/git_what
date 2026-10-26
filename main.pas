@@ -98,6 +98,7 @@ end;
 procedure TmainForm.bRebaseClick(Sender: TObject);
 begin
   //Rebase the current branch
+  fGitWhat.rebaseCurrentBranch;
 end;
 
 procedure TmainForm.cbCurrentBranchMouseDown(Sender: TObject;
