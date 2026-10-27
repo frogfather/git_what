@@ -25,6 +25,7 @@ type
     fCurrentRepoChanged:TNotifyEvent;
     fCurrentBranchChanged:TNotifyEvent;
     fBaseBranchChanged:TNotifyEvent;
+    fBranchRebased:TNotifyEvent;
     function getBaseBranch: TBranch;
     function updateRepositories:integer;
     function repoMissingOrUpdated(repoName: string; repo_: TRepo): boolean;
@@ -55,7 +56,8 @@ type
       onReposChanged,
       onCurrentRepoChanged,
       onCurrentBranchChanged,
-      onBaseBranchChanged:TNotifyEvent);
+      onBaseBranchChanged,
+      onBranchRebased:TNotifyEvent);
     function getRepoNames:TStringlist;
     function saveToFile(fileName:string):boolean;
     function loadFromFile(fileName:string):boolean;
@@ -83,7 +85,8 @@ constructor TGitWhat.create(
   onReposChanged,
   onCurrentRepoChanged,
   onCurrentBranchChanged,
-  onBaseBranchChanged:TNotifyEvent);
+  onBaseBranchChanged,
+  onBranchRebased:TNotifyEvent);
 begin
   fCurrentDirectory:='';
   fRepositories:= specialize TFPGMap<string,TRepo>.Create;
@@ -99,6 +102,7 @@ begin
   fCurrentRepoChanged:=onCurrentRepoChanged;
   fCurrentBranchChanged:=onCurrentBranchChanged;
   fBaseBranchChanged:=onBaseBranchChanged;
+  fBranchRebased:=onBranchRebased;
   fXMLDocumentHandler:=TXMLDocumentHandler.create;
 end;
 
@@ -300,20 +304,57 @@ end;
 procedure TGitWhat.rebaseCurrentBranch;
 var
   gitApi: TGitApi;
-  logResponse,statusResponse:TGitResponse;
+  logResponse,statusResponse,pullResponse,unstashResponse:TGitResponse;
   currentCommit:String;
-  isClean:Boolean;
+  isClean,hasStash:Boolean;
+  rebaseResults:TStringList;
+  index:integer;
 begin
-  //note if not clean and stash if required
   //pull against specified base branch
   //If it didn't work, rebase --abort
   //If we had to stash then stash apply
+  rebaseResults:=TStringlist.Create;
   gitApi:=TGitApi.create(currentRepo);
+  hasStash:=false;
+  isClean:=false;
+  rebaseResults.Add('Attempting rebase of branch '+currentRepo.currentBranch.name+' against '+currentRepo.mainBranch.name);
   logResponse:=gitApi.getLastCommits;
   if (logResponse.success) then
      begin
      currentCommit:=logResponse.results[0];
+     rebaseResults.Add('Current commit '+currentCommit);
      statusResponse:=gitApi.getStatus;
+     if (statusResponse.success) then
+        begin
+        //Second line may read Changes not staged for commit:
+        isClean:= not statusResponse.results[1].Contains('Changes not staged');
+        if not isClean then
+           begin
+           rebaseResults.Add('Tree is not clean. Stashing changes before rebase');
+           gitApi.stash;
+           hasStash:=true;
+           end;
+         pullResponse:=gitApi.pull(baseBranch.name);
+         //The pull response may differ quite widely depending on the result
+
+         for index:=0 to pred(pullResponse.results.Count) do
+           rebaseResults.Add(pullResponse.results[index]);
+
+         //TBA various actions depending on the result
+
+         //If stash exists re-apply it.
+         if hasStash then
+           begin
+           unstashResponse:=gitApi.unstash;
+           for index:=0 to pred(unstashResponse.results.Count) do
+             rebaseResults.Add(unstashResponse.results[index]);
+           if not unstashResponse.success then
+             begin
+             //if we couldn't apply the stash then probably there's a conflict
+             end;
+           end;
+         fBranchRebased(TGitResponse.create(rebaseResults));
+        end;
      end;
 end;
 

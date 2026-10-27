@@ -28,7 +28,7 @@ type
     function getStatus:TGitResponse;
     function getLastCommits(limit_:integer = 5):TGitResponse;
     function stash:TGitResponse;
-    function pull(baseBranchName_:String):TGitResponse;
+    function pull(baseBranchName_:String;remoteName_:String = 'origin'):TGitResponse;
     function reset(commit:string):TGitResponse;
     function unstash:TGitResponse;
   end;
@@ -120,11 +120,11 @@ begin
   result:=TGitResponse.create(executeCommand);
 end;
 
-function TGitApi.pull(baseBranchName_: String): TGitResponse;
+function TGitApi.pull(baseBranchName_:String;remoteName_:String): TGitResponse;
 //Need to be able to set remote name to something other than origin
 begin
   resetParams;
-  params.Add('git pull origin '+baseBranchName_);
+  params.Add('git pull '+remoteName_+' '+baseBranchName_);
   result:=TGitResponse.create(executeCommand);
 end;
 

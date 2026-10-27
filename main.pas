@@ -59,6 +59,7 @@ type
     procedure onCurrentRepoChanged(sender:TObject);
     procedure onCurrentBranchChanged(sender:TObject);
     procedure onBaseBranchChanged(sender:TObject);
+    procedure onBranchRebased(sender:TObject);
     procedure loadNames(currentRepoName:string);
     procedure updateBranchList;
     function getCurrentBranchIndex(branchList:TStrings):Integer;
@@ -163,7 +164,8 @@ begin
     @onReposChanged,
     @onCurrentRepoChanged,
     @onCurrentBranchChanged,
-    @onBaseBranchChanged);
+    @onBaseBranchChanged,
+    @onBranchRebased);
   if (fGitWhat.loadFromFile(getUsrDir('johncampbell')+dataFileName)) then
      begin
      eCodeDirectory.Text:=fGitWhat.codeDirectory;
@@ -264,6 +266,16 @@ begin
     bRebase.enabled:=(name <> '');
     end;
 
+end;
+
+procedure TmainForm.onBranchRebased(sender: TObject);
+var
+  index:integer;
+begin
+  lbLog.items.add('on branch rebase event');
+  if sender is TGitResponse then with sender as TGitResponse do
+    for index:=0 to pred(results.Count) do
+    lbLog.items.add(results[index]);
 end;
 
 procedure TmainForm.loadNames(currentRepoName:string);
