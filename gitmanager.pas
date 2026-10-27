@@ -336,7 +336,7 @@ begin
            end;
          pullResponse:=gitApi.pull(baseBranch.name);
          //The pull response may differ quite widely depending on the result
-
+         //If it fails the results will be in errors rather than results
          for index:=0 to pred(pullResponse.results.Count) do
            rebaseResults.Add(pullResponse.results[index]);
 

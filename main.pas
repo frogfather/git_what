@@ -149,7 +149,7 @@ end;
 
 procedure TmainForm.FormDestroy(Sender: TObject);
 begin
-  fGitWhat.saveToFile(getUsrDir('johncampbell')+dataFileName);
+  fGitWhat.saveToFile(getUserDir+dataFileName);
 end;
 
 
@@ -166,7 +166,7 @@ begin
     @onCurrentBranchChanged,
     @onBaseBranchChanged,
     @onBranchRebased);
-  if (fGitWhat.loadFromFile(getUsrDir('johncampbell')+dataFileName)) then
+  if (fGitWhat.loadFromFile(getUserDir+dataFileName)) then
      begin
      eCodeDirectory.Text:=fGitWhat.codeDirectory;
      cbCurrentRepo.Items:= fGitWhat.getRepoNames;
